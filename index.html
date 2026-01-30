@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Browser Extension Extractor</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 16px;
+    }
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+    }
+    pre {
+      background: #f6f6f6;
+      padding: 12px;
+      overflow-x: auto;
+    }
+    .error {
+      color: #a00;
+      margin-top: 8px;
+    }
+    .result {
+      margin-top: 24px;
+    }
+    .lang-switch {
+      text-align: right;
+      margin-bottom: 16px;
+    }
+  </style>
+
+  <script src="js/i18n.js"></script>
+  <script src="js/app.js" defer></script>
+</head>
+
+<body onload="initI18n()">
+
+  <div class="lang-switch">
+    <button onclick="setLanguage('en')">EN</button>
+    <button onclick="setLanguage('zh')">中文</button>
+  </div>
+
+  <h1 data-i18n="title"></h1>
+
+  <label data-i18n="paste_label"></label>
+  <br /><br />
+
+  <textarea
+    id="inputBox"
+    rows="12"
+    data-i18n-placeholder="paste_placeholder"
+  ></textarea>
+
+  <div id="errorBox" class="error"></div>
+
+  <p style="font-size:14px;" data-i18n="unsupported_note"></p>
+
+  <div class="result">
+    <h2 data-i18n="result_title"></h2>
+    <pre id="outputBox"></pre>
+  </div>
+
+  <hr />
+
+  <h2 data-i18n="unsupported_title"></h2>
+  <p data-i18n="unsupported_example_label"></p>
+
+  <pre>
+--------BEGIN--------
+QWxuWmZxUjRkQXlVbW1GQkZQeWNYbHh2S3FqM2hEVjY5
+QnRBeEtmSkpZQ0JzUVl6U2VLa1FhZ0JHT1VhPQ==
+--------END--------
+  </pre>
+
+</body>
+</html>
