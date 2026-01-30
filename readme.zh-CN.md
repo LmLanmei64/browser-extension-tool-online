@@ -1,4 +1,4 @@
-# 浏览器扩展信息提取工具
+# 浏览器扩展信息提取工具在线
 
 [English](README.md) | [中文](README.zh-CN.md)
 

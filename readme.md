@@ -1,4 +1,4 @@
-# Browser Extension Extractor
+# Browser Extension Extractor Onilne
 
 [English](README.md) | [中文](README.zh-CN.md)
 
