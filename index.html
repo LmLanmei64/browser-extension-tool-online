@@ -39,26 +39,22 @@
       font-size: 13px;
     }
 
+    .controls {
+      margin-top: 12px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #fafafa;
+    }
+
     .error {
       color: #a00;
       margin-top: 8px;
     }
 
-    .result {
-      margin-top: 24px;
-    }
-
-    .lang-switch {
-      text-align: right;
-      margin-bottom: 16px;
-    }
-
-    .controls {
-      margin-top: 10px;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      background: #fafafa;
+    .source-options label {
+      margin-right: 16px;
+      font-size: 14px;
     }
   </style>
 
@@ -68,18 +64,10 @@
 
 <body onload="initI18n()">
 
-  <!-- Language Switch -->
-  <div class="lang-switch">
-    <button onclick="setLanguage('en')">EN</button>
-    <button onclick="setLanguage('zh')">中文</button>
-  </div>
-
   <h1 data-i18n="title"></h1>
 
-  <label data-i18n="paste_label"></label>
-  <br /><br />
+  <label data-i18n="paste_label"></label><br /><br />
 
-  <!-- Input -->
   <textarea
     id="inputBox"
     rows="10"
@@ -88,10 +76,22 @@
 
   <div id="errorBox" class="error"></div>
 
-  <p style="font-size:14px;" data-i18n="unsupported_note"></p>
-
-  <!-- Controls -->
   <div class="controls">
+
+    <div class="source-options">
+      <strong data-i18n="source_title"></strong><br />
+      <label>
+        <input type="checkbox" id="srcOfficial" checked />
+        <span data-i18n="source_official"></span>
+      </label>
+      <label>
+        <input type="checkbox" id="srcCrxSoso" checked />
+        <span data-i18n="source_crxsoso"></span>
+      </label>
+    </div>
+
+    <hr />
+
     <button id="parseBtn" data-i18n="btn_parse"></button>
     <button id="openBtn" data-i18n="btn_open"></button>
     <button id="openDelayBtn" data-i18n="btn_open_delay"></button>
@@ -100,28 +100,12 @@
 
     <label>
       <span data-i18n="delay_label"></span>
-      <input id="delayInput" type="number" value="500" style="width:80px;" />
-      ms
+      <input id="delayInput" type="number" value="500" style="width:80px;" /> ms
     </label>
   </div>
 
-  <!-- Output -->
-  <div class="result">
-    <h2 data-i18n="result_title"></h2>
-    <pre id="outputBox"></pre>
-  </div>
-
-  <hr />
-
-  <!-- Unsupported Example -->
-  <h2 data-i18n="unsupported_title"></h2>
-  <p data-i18n="unsupported_example_label"></p>
-
-  <pre>
---------BEGIN--------
-TnRZcG5OZVZyV0lXb3p3dFZqQ2RrZ2FhQ3lqR0J3PQ==
---------END--------
-  </pre>
+  <h2 data-i18n="result_title"></h2>
+  <pre id="outputBox"></pre>
 
 </body>
 </html>
