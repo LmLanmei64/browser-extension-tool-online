@@ -1,5 +1,4 @@
 // app.js
-
 let finalData = [];
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -18,18 +17,17 @@ document.addEventListener("DOMContentLoaded", () => {
     errorBox.textContent = "";
     outputBox.textContent = "";
 
-    // 检测加密分享文本
     if (isEncryptedShareText(text)) {
       errorBox.textContent =
         currentLang === "zh"
           ? "检测到加密分享文本。该格式不受支持，请使用 JSON 或 Markdown 导出。"
-          : "Encrypted share text detected. This format is not supported. Please use JSON or Markdown exports.";
+          : "Encrypted share text detected. This format is not supported.";
       return;
     }
 
     const parsed = parseExtensions(text);
 
-    // 查询 UUID 对应的 slug
+    // 🔑 UUID → slug（异步）
     const resolved = await resolveUUIDs(parsed);
 
     finalData = attachLinks(resolved);
@@ -37,9 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
     alert(`Parsed ${finalData.length} extensions`);
   };
 
-  openBtn.onclick = () => {
-    openLinksSafely(finalData, 0);
-  };
+  openBtn.onclick = () => openLinksSafely(finalData, 0);
 
   openDelayBtn.onclick = () => {
     const delay = Number(delayInput.value) || 500;
@@ -47,13 +43,12 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 });
 
-/* ================= 检测加密分享文本 ================= */
+/* ================= 工具函数 ================= */
 
 function isEncryptedShareText(text) {
   return (
     /-{4,}\s*BEGIN\s*-{4,}/i.test(text) &&
-    /-{4,}\s*END\s*-{4,}/i.test(text) &&
-    /[A-Za-z0-9+/=]{40,}/.test(text)
+    /-{4,}\s*END\s*-{4,}/i.test(text)
   );
 }
 
@@ -71,26 +66,21 @@ function parseExtensions(text) {
     }
   }
 
-  // Chromium 扩展 ID（32位 a-p）
-  const chromeIds = text.match(/\b[a-p]{32}\b/g) || [];
-  chromeIds.forEach(id => {
+  /* Chromium ID */
+  (text.match(/\b[a-p]{32}\b/g) || []).forEach(id => {
     add({ browser: "chromium", id });
   });
 
-  // Firefox 标准 slug@domain（桌面版 + Android）
-  const firefoxIds = text.match(/\b([a-z0-9-]+)@[a-z0-9.-]+\b/gi) || [];
-  firefoxIds.forEach(m => {
+  /* Firefox slug@domain（桌面 + Android 表格） */
+  (text.match(/\b([a-z0-9-]+)@[a-z0-9.-]+\b/gi) || []).forEach(m => {
     const slug = m.split("@")[0];
-
-    // 排除 UUID 形式 {xxxx}
-    if (!slug.startsWith("{") && /^[a-z0-9-]+$/.test(slug)) {
+    if (/^[a-z0-9-]+$/.test(slug)) {
       add({ browser: "firefox", slug });
     }
   });
 
-  // Firefox UUID 形式（仅识别）
-  const uuidMatches = text.match(/\{[0-9a-fA-F-]{36}\}/g) || [];
-  uuidMatches.forEach(uuid => {
+  /* Firefox UUID */
+  (text.match(/\{[0-9a-fA-F-]{36}\}/g) || []).forEach(uuid => {
     add({
       browser: "firefox",
       uuid,
@@ -98,19 +88,20 @@ function parseExtensions(text) {
     });
   });
 
-  // AMO URL
-  const amo = text.match(/addon\/([a-z0-9-]+)/gi) || [];
-  amo.forEach(m => {
-    add({ browser: "firefox", slug: m.split("/").pop() });
-  });
+  /* AMO URL */
+  (text.match(/addons\.mozilla\.org\/[^/]+\/addon\/([a-z0-9-]+)/gi) || []).forEach(
+    m => {
+      add({ browser: "firefox", slug: m.split("/").pop() });
+    }
+  );
 
   return results;
 }
 
-/* ================= 解析 UUID 并查询 slug ================= */
+/* ================= UUID → slug（官方 v5 API） ================= */
 
-async function resolveUUIDs(extList) {
-  for (const ext of extList) {
+async function resolveUUIDs(list) {
+  for (const ext of list) {
     if (ext.browser === "firefox" && ext.needsResolve && ext.uuid) {
       const slug = await resolveFirefoxUUID(ext.uuid);
       if (slug) {
@@ -118,29 +109,28 @@ async function resolveUUIDs(extList) {
         delete ext.needsResolve;
       } else {
         ext.unresolvable = true;
+        ext.reason = "UUID not found in AMO";
       }
     }
   }
-  return extList;
+  return list;
 }
 
 async function resolveFirefoxUUID(uuid) {
   const clean = uuid.replace(/[{}]/g, "");
-  const url = `https://addons.mozilla.org/api/v5/addons/search/?guid=${clean}`;
+  const url = `https://addons.mozilla.org/api/v5/addons/addon/${clean}/`;
 
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, {
+      headers: { Accept: "application/json" }
+    });
     if (!res.ok) return null;
 
     const data = await res.json();
-    if (data.results && data.results.length > 0) {
-      return data.results[0].slug;
-    }
-  } catch (e) {
+    return data.slug || null;
+  } catch {
     return null;
   }
-
-  return null;
 }
 
 /* ================= 构建下载链接 ================= */
@@ -158,19 +148,14 @@ function buildDownloadLinks(ext) {
   if (ext.browser === "chromium" && ext.id) {
     links.push({
       type: "official",
-      browser: "chromium",
       url: `https://chrome.google.com/webstore/detail/${ext.id}`
     });
-
     links.push({
       type: "crxsoso",
-      browser: "chrome",
       url: `https://www.crxsoso.com/webstore/detail/${ext.id}`
     });
-
     links.push({
       type: "crxsoso",
-      browser: "edge",
       url: `https://www.crxsoso.com/addon/detail/${ext.id}`
     });
   }
@@ -178,13 +163,10 @@ function buildDownloadLinks(ext) {
   if (ext.browser === "firefox" && ext.slug) {
     links.push({
       type: "official",
-      browser: "firefox",
       url: `https://addons.mozilla.org/firefox/addon/${ext.slug}/`
     });
-
     links.push({
       type: "crxsoso",
-      browser: "firefox",
       url: `https://www.crxsoso.com/firefox/detail/${ext.slug}`
     });
   }
@@ -194,22 +176,16 @@ function buildDownloadLinks(ext) {
 
 /* ================= 批量打开 ================= */
 
-function openLinksSafely(finalOutput, delay = 0) {
-  let urls = [];
-
-  finalOutput.forEach(ext => {
-    ext.links.forEach(link => urls.push(link.url));
-  });
-
+function openLinksSafely(data, delay = 0) {
+  const urls = [];
+  data.forEach(ext => ext.links.forEach(l => urls.push(l.url)));
   if (!urls.length) return;
 
   if (!confirm(`Open ${urls.length} links in new tabs?`)) return;
 
-  urls.forEach((url, index) => {
-    if (delay > 0) {
-      setTimeout(() => window.open(url, "_blank"), index * delay);
-    } else {
-      window.open(url, "_blank");
-    }
+  urls.forEach((url, i) => {
+    delay
+      ? setTimeout(() => window.open(url, "_blank"), i * delay)
+      : window.open(url, "_blank");
   });
 }
