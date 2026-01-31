@@ -1,21 +1,22 @@
 # Browser Extension Extractor Online
 
-[English](README.md) | [中文](README.zh-CN.md)
+[🇨🇳 中文说明 / Chinese Version →](./README.zh-CN.md)
 
 A lightweight, client-side tool to extract browser extension identifiers
-from various **plain-text** export sources.
+and installation links from **mixed, plain-text export sources**.
 
 This project focuses on **transparency, safety, and long-term maintainability**.
-Only inspectable and non-encrypted formats are supported.
+Only inspectable, non-encrypted formats are supported.
 
 ---
 
 ## Features
 
-- 🧩 Extract extensions from mixed, unstructured text
+- 🧩 Extract extensions from **mixed, unstructured text**
 - 🌐 Supports Chromium-based browsers and Firefox
 - 🔍 Automatic detection of extension identifiers
-- 🛡️ No execution, no decryption, no external requests
+- 🧠 Resolves Firefox UUIDs (GUID) via the official AMO v5 API
+- 🧹 Automatically filters **Firefox system / built-in extensions**
 - 🌍 Internationalized UI (English / 中文)
 - 📄 Runs entirely in the browser (GitHub Pages friendly)
 
@@ -32,10 +33,24 @@ Only inspectable and non-encrypted formats are supported.
 
 ### Firefox
 - Mozilla Firefox (Desktop)
+- Mozilla Firefox for Android
 
 ---
 
 ## Supported Input Formats
+
+### Mixed Content (Recommended)
+
+You can paste **multiple sources together** in one input, for example:
+
+- Chrome exports
+- Firefox `about:support`
+- AMO links
+- Markdown / JSON lists
+
+The extractor will automatically detect and deduplicate extensions.
+
+---
 
 ### Chromium-based browsers
 
@@ -48,10 +63,12 @@ Only inspectable and non-encrypted formats are supported.
   - JSON
   - Markdown (`.md`)
 
+---
+
 ### Firefox
 
-- `about:support`  
-  Copy the **Extensions** section.
+- `about:support` (Desktop & Android)  
+  Copy the **Extensions** section (table format supported).
 - Extension List Exporter
   - JSON
   - CSV
@@ -61,13 +78,33 @@ Only inspectable and non-encrypted formats are supported.
 
 ---
 
+## Firefox UUID (GUID) Support
+
+Some Firefox extensions (especially on Android) only expose a UUID, e.g.:
+
+```
+{b1b38301-9512-4201-b210-8c9d8eaef4f6}
+```
+
+This tool resolves such UUIDs via the official AMO API:
+
+```
+https://addons.mozilla.org/api/v5/addons/addon/{GUID}/
+```
+
+- ✅ If the extension is publicly listed, its slug is resolved and normal download links are generated.
+- ❌ System / built-in extensions are automatically excluded.
+- ❌ Private or unlisted extensions may not be resolvable.
+
+---
+
 ## ❌ Unsupported Formats (Important)
 
-This tool **does NOT support encrypted or proprietary sharing formats**, including:
+This tool does **NOT** support encrypted or proprietary sharing formats.
 
-### auto-extension-manager encrypted share text
+### auto-extension-manager encrypted share text (unsupported)
 
-Example (unsupported):
+Example:
 
 ```
 --------BEGIN--------
@@ -76,17 +113,15 @@ QnRBeEtmSkpZQ0JzUVl6U2VLa1FhZ0JHT1VhPQ==
 --------END--------
 ```
 
-- This format is a **private protocol** of  
-  https://github.com/JasonGrass/auto-extension-manager
-- It is intended **only** for import back into that extension.
-- It is not a transparent or standardized interchange format.
+- This is a **private, opaque protocol**
+- Intended only for re-import into the original extension
+- Not a transparent or standardized interchange format
 
-👉 **Please use one of the following instead:**
+👉 Please export using:
 
-- auto-extension-manager exports:
-  - ✅ JSON
-  - ✅ Markdown (`.md`)
-- Any other supported plain-text formats listed above.
+- ✅ JSON
+- ✅ Markdown (`.md`)
+- ✅ Any other plain-text format listed above
 
 ---
 
@@ -107,23 +142,25 @@ The extracted result is a normalized JSON array:
 ]
 ```
 
+### Fields
+
 - `browser`
   - `chromium` or `firefox`
 - `id`
   - Chromium extension ID (32 characters, a–p)
 - `slug`
-  - Firefox add-on slug
+  - Firefox add-on slug (resolved from UUID if necessary)
 
 ---
 
 ## Design Principles
 
-- 🔍 Plain text only — no hidden or opaque data
+- 🔍 Plain-text only — no hidden or opaque data
 - 🔐 No decryption of third-party formats
 - 🛡️ No code execution
-- 🧩 Focused on extension identification, not full state restoration
+- 🧩 Focused on extension identification and discovery
 
-These constraints keep the tool predictable, secure, and easy to maintain.
+These constraints keep the tool predictable, safe, and easy to maintain.
 
 ---
 
