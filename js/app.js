@@ -1,56 +1,31 @@
-function isEncryptedShareText(text) {
-  return (
-    /-{4,}\s*BEGIN\s*-{4,}/i.test(text) &&
-    /-{4,}\s*END\s*-{4,}/i.test(text) &&
-    /[A-Za-z0-9+/=]{40,}/.test(text)
-  );
-}
+// app.js
 
-function parseExtensions(text) {
-  const results = [];
-  const seen = new Set();
+import { parseExtensions } from "./parser.js";
+import { attachLinks } from "./links.js";
+import { openLinks } from "./opener.js";
 
-  function add(item) {
-    const key = item.browser + ":" + (item.id || item.slug);
-    if (!seen.has(key)) {
-      seen.add(key);
-      results.push(item);
-    }
-  }
-
-  // Chromium extension IDs
-  const chromeIds = text.match(/[a-p]{32}/g) || [];
-  chromeIds.forEach(id => {
-    add({ browser: "chromium", id });
-  });
-
-  // Firefox IDs (slug@domain)
-  const firefoxIds = text.match(/([a-z0-9-]+)@/gi) || [];
-  firefoxIds.forEach(m => {
-    add({ browser: "firefox", slug: m.replace("@", "") });
-  });
-
-  // AMO URLs
-  const amo = text.match(/addon\/([a-z0-9-]+)/gi) || [];
-  amo.forEach(m => {
-    add({ browser: "firefox", slug: m.split("/").pop() });
-  });
-
-  return results;
-}
+// Global variable to store parsed data
+let finalData = [];
 
 document.addEventListener("DOMContentLoaded", () => {
   const inputBox = document.getElementById("inputBox");
   const outputBox = document.getElementById("outputBox");
   const errorBox = document.getElementById("errorBox");
+  const parseBtn = document.getElementById("parseBtn");
+  const openBtn = document.getElementById("openBtn");
+  const openDelayBtn = document.getElementById("openDelayBtn");
+  const delayInput = document.getElementById("delayInput");
 
-  inputBox.addEventListener("input", () => {
+  // Parse button logic
+  parseBtn.onclick = () => {
     const text = inputBox.value.trim();
+    if (!text) return;
+
+    // Clear previous output and errors
     errorBox.textContent = "";
     outputBox.textContent = "";
 
-    if (!text) return;
-
+    // Check for unsupported formats (BEGIN/END encrypted text)
     if (isEncryptedShareText(text)) {
       errorBox.textContent =
         currentLang === "zh"
@@ -59,7 +34,34 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const result = parseExtensions(text);
-    outputBox.textContent = JSON.stringify(result, null, 2);
-  });
+    // Parse and generate links
+    const parsed = parseExtensions(text);
+    finalData = attachLinks(parsed);
+    outputBox.textContent = JSON.stringify(finalData, null, 2);
+    alert(`Parsed ${finalData.length} extensions`);
+  };
+
+  // Open links button (no delay)
+  openBtn.onclick = () => {
+    openLinks(finalData);
+  };
+
+  // Open links button (with delay)
+  openDelayBtn.onclick = () => {
+    const delay = Number(delayInput.value) || 500;
+    openLinks(finalData, { delay });
+  };
 });
+
+/**
+ * Check if the input text is encrypted share text (BEGIN / END format)
+ * @param {string} text - The input text to check
+ * @returns {boolean} - True if the text matches the encrypted format
+ */
+function isEncryptedShareText(text) {
+  return (
+    /-{4,}\s*BEGIN\s*-{4,}/i.test(text) &&
+    /-{4,}\s*END\s*-{4,}/i.test(text) &&
+    /[A-Za-z0-9+/=]{40,}/.test(text)
+  );
+}

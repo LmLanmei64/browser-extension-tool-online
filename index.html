@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Browser Extension Extractor</title>
+
   <style>
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -10,25 +11,54 @@
       margin: 40px auto;
       padding: 0 16px;
     }
+
     textarea {
       width: 100%;
       box-sizing: border-box;
+      font-family: monospace;
+      font-size: 14px;
     }
+
+    button {
+      padding: 8px 14px;
+      margin: 6px 4px;
+      cursor: pointer;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      background: #f8f8f8;
+    }
+
+    button:hover {
+      background: #eee;
+    }
+
     pre {
       background: #f6f6f6;
       padding: 12px;
       overflow-x: auto;
+      font-size: 13px;
     }
+
     .error {
       color: #a00;
       margin-top: 8px;
     }
+
     .result {
       margin-top: 24px;
     }
+
     .lang-switch {
       text-align: right;
       margin-bottom: 16px;
+    }
+
+    .controls {
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #fafafa;
     }
   </style>
 
@@ -38,6 +68,7 @@
 
 <body onload="initI18n()">
 
+  <!-- Language Switch -->
   <div class="lang-switch">
     <button onclick="setLanguage('en')">EN</button>
     <button onclick="setLanguage('zh')">中文</button>
@@ -48,9 +79,10 @@
   <label data-i18n="paste_label"></label>
   <br /><br />
 
+  <!-- Input -->
   <textarea
     id="inputBox"
-    rows="12"
+    rows="10"
     data-i18n-placeholder="paste_placeholder"
   ></textarea>
 
@@ -58,6 +90,22 @@
 
   <p style="font-size:14px;" data-i18n="unsupported_note"></p>
 
+  <!-- Controls -->
+  <div class="controls">
+    <button id="parseBtn" data-i18n="btn_parse"></button>
+    <button id="openBtn" data-i18n="btn_open"></button>
+    <button id="openDelayBtn" data-i18n="btn_open_delay"></button>
+
+    <br />
+
+    <label>
+      <span data-i18n="delay_label"></span>
+      <input id="delayInput" type="number" value="500" style="width:80px;" />
+      ms
+    </label>
+  </div>
+
+  <!-- Output -->
   <div class="result">
     <h2 data-i18n="result_title"></h2>
     <pre id="outputBox"></pre>
@@ -65,13 +113,13 @@
 
   <hr />
 
+  <!-- Unsupported Example -->
   <h2 data-i18n="unsupported_title"></h2>
   <p data-i18n="unsupported_example_label"></p>
 
   <pre>
 --------BEGIN--------
-QWxuWmZxUjRkQXlVbW1GQkZQeWNYbHh2S3FqM2hEVjY5
-QnRBeEtmSkpZQ0JzUVl6U2VLa1FhZ0JHT1VhPQ==
+TnRZcG5OZVZyV0lXb3p3dFZqQ2RrZ2FhQ3lqR0J3PQ==
 --------END--------
   </pre>
 
