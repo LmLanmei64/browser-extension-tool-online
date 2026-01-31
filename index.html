@@ -4,108 +4,44 @@
   <meta charset="UTF-8" />
   <title>Browser Extension Extractor</title>
 
-  <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      max-width: 900px;
-      margin: 40px auto;
-      padding: 0 16px;
-    }
-
-    textarea {
-      width: 100%;
-      box-sizing: border-box;
-      font-family: monospace;
-      font-size: 14px;
-    }
-
-    button {
-      padding: 8px 14px;
-      margin: 6px 4px;
-      cursor: pointer;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      background: #f8f8f8;
-    }
-
-    button:hover {
-      background: #eee;
-    }
-
-    pre {
-      background: #f6f6f6;
-      padding: 12px;
-      overflow-x: auto;
-      font-size: 13px;
-    }
-
-    .controls {
-      margin-top: 12px;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      background: #fafafa;
-    }
-
-    .error {
-      color: #a00;
-      margin-top: 8px;
-    }
-
-    .source-options label {
-      margin-right: 16px;
-      font-size: 14px;
-    }
-  </style>
-
   <script src="js/i18n.js"></script>
   <script src="js/app.js" defer></script>
+
+  <style>
+    body { max-width: 900px; margin: 40px auto; font-family: system-ui; }
+    textarea { width: 100%; font-family: monospace; }
+    .controls { margin-top: 12px; padding: 12px; border: 1px solid #ccc; }
+    label { margin-right: 16px; }
+    pre { background: #f6f6f6; padding: 12px; }
+  </style>
 </head>
 
 <body onload="initI18n()">
 
-  <h1 data-i18n="title"></h1>
+<h1 data-i18n="title"></h1>
 
-  <label data-i18n="paste_label"></label><br /><br />
+<textarea id="inputBox" rows="10"></textarea>
 
-  <textarea
-    id="inputBox"
-    rows="10"
-    data-i18n-placeholder="paste_placeholder"
-  ></textarea>
+<div class="controls">
 
-  <div id="errorBox" class="error"></div>
+  <strong data-i18n="browser_select"></strong><br />
+  <label><input type="checkbox" id="brChrome" checked /> Chrome</label>
+  <label><input type="checkbox" id="brEdge" checked /> Edge</label>
+  <label><input type="checkbox" id="brFirefox" checked /> Firefox</label>
 
-  <div class="controls">
+  <hr />
 
-    <div class="source-options">
-      <strong data-i18n="source_title"></strong><br />
-      <label>
-        <input type="checkbox" id="srcOfficial" checked />
-        <span data-i18n="source_official"></span>
-      </label>
-      <label>
-        <input type="checkbox" id="srcCrxSoso" checked />
-        <span data-i18n="source_crxsoso"></span>
-      </label>
-    </div>
+  <strong data-i18n="source_select"></strong><br />
+  <label><input type="checkbox" id="srcOfficial" checked /> Official</label>
+  <label><input type="checkbox" id="srcCrx" checked /> CRX Soso</label>
 
-    <hr />
+  <hr />
 
-    <button id="parseBtn" data-i18n="btn_parse"></button>
-    <button id="openBtn" data-i18n="btn_open"></button>
-    <button id="openDelayBtn" data-i18n="btn_open_delay"></button>
+  <button id="parseBtn" data-i18n="btn_parse"></button>
+  <button id="openBtn" data-i18n="btn_open"></button>
+</div>
 
-    <br />
-
-    <label>
-      <span data-i18n="delay_label"></span>
-      <input id="delayInput" type="number" value="500" style="width:80px;" /> ms
-    </label>
-  </div>
-
-  <h2 data-i18n="result_title"></h2>
-  <pre id="outputBox"></pre>
+<pre id="outputBox"></pre>
 
 </body>
 </html>
