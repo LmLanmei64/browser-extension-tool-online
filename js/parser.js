@@ -2,37 +2,14 @@
 
 const CHROMIUM_ID_REGEX = /\b[a-p]{32}\b/g;
 const FIREFOX_SLUG_REGEX = /addons\.mozilla\.org\/[^/]+\/addon\/([a-z0-9\-]+)/gi;
-const FIREFOX_UUID_REGEX = /\{[0-9a-fA-F\-]{36}\}/g;
+const FIREFOX_UUID_REGEX = /\{[0-9a-fA-F\-]{36}\}/g;  // 增加对 UUID 的匹配
 
-export function parseExtensions(input) {
+export function parseExtensions(text) {
   const results = [];
   const seen = new Set();
 
-  // ① 尝试 JSON（Chromium / Edge 导出）
-  try {
-    const json = JSON.parse(input);
-    if (Array.isArray(json)) {
-      json.forEach(item => {
-        if (item.id && item.channel) {
-          const browser = item.channel.toLowerCase();
-          const key = `${browser}:${item.id}`;
-          if (!seen.has(key)) {
-            seen.add(key);
-            results.push({
-              browser,
-              id: item.id
-            });
-          }
-        }
-      });
-      if (results.length) return results;
-    }
-  } catch {
-    // 不是 JSON，继续走文本解析
-  }
-
-  // ② Chromium 扩展 ID（纯文本 / URL）
-  const chromiumMatches = input.match(CHROMIUM_ID_REGEX) || [];
+  // 解析 Chromium ID
+  const chromiumMatches = text.match(CHROMIUM_ID_REGEX) || [];
   chromiumMatches.forEach(id => {
     const key = `chromium:${id}`;
     if (!seen.has(key)) {
@@ -41,9 +18,9 @@ export function parseExtensions(input) {
     }
   });
 
-  // ③ Firefox slug（AMO URL）
+  // 解析 Firefox AMO URL 中的 slug
   let match;
-  while ((match = FIREFOX_SLUG_REGEX.exec(input)) !== null) {
+  while ((match = FIREFOX_SLUG_REGEX.exec(text)) !== null) {
     const slug = match[1];
     const key = `firefox:slug:${slug}`;
     if (!seen.has(key)) {
@@ -52,16 +29,13 @@ export function parseExtensions(input) {
     }
   }
 
-  // ④ Firefox about:support UUID（TSV 表格）
-  const uuidMatches = input.match(FIREFOX_UUID_REGEX) || [];
+  // 解析 Firefox about:support 表格中的 UUID
+  const uuidMatches = text.match(FIREFOX_UUID_REGEX) || [];
   uuidMatches.forEach(uuid => {
     const key = `firefox:uuid:${uuid}`;
     if (!seen.has(key)) {
       seen.add(key);
-      results.push({
-        browser: "firefox",
-        uuid
-      });
+      results.push({ browser: "firefox", uuid });  // 保存 UUID 以便后续 API 请求
     }
   });
 
