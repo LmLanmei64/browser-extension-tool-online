@@ -1,47 +1,88 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
   <meta charset="UTF-8" />
-  <title>Browser Extension Extractor</title>
+  <title>浏览器扩展提取工具</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      max-width: 900px;
+      margin: 20px auto;
+      padding: 0 12px;
+    }
+
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      font-family: monospace;
+      font-size: 14px;
+    }
+
+    fieldset {
+      margin-top: 12px;
+      padding: 10px;
+    }
+
+    label {
+      display: block;
+      margin: 6px 0;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 6px 12px;
+    }
+
+    pre {
+      background: #f6f6f6;
+      padding: 10px;
+      overflow-x: auto;
+      font-size: 13px;
+    }
+
+    .error {
+      color: #a00;
+      margin-top: 8px;
+    }
+  </style>
 
   <script src="js/i18n.js"></script>
   <script src="js/app.js" defer></script>
-
-  <style>
-    body { max-width: 900px; margin: 40px auto; font-family: system-ui; }
-    textarea { width: 100%; font-family: monospace; }
-    .controls { margin-top: 12px; padding: 12px; border: 1px solid #ccc; }
-    label { margin-right: 16px; }
-    pre { background: #f6f6f6; padding: 12px; }
-  </style>
 </head>
 
 <body onload="initI18n()">
 
-<h1 data-i18n="title"></h1>
+  <h1>浏览器扩展提取工具</h1>
 
-<textarea id="inputBox" rows="10"></textarea>
+  <textarea
+    id="inputBox"
+    rows="10"
+    placeholder="粘贴 about:support / extensions-internals / JSON 内容"
+  ></textarea>
 
-<div class="controls">
+  <fieldset>
+    <legend>浏览器选择</legend>
+    <label><input type="checkbox" id="browser_chrome" checked /> Chrome</label>
+    <label><input type="checkbox" id="browser_edge" checked /> Edge</label>
+    <label><input type="checkbox" id="browser_firefox" checked /> Firefox</label>
+  </fieldset>
 
-  <strong data-i18n="browser_select"></strong><br />
-  <label><input type="checkbox" id="brChrome" checked /> Chrome</label>
-  <label><input type="checkbox" id="brEdge" checked /> Edge</label>
-  <label><input type="checkbox" id="brFirefox" checked /> Firefox</label>
+  <fieldset>
+    <legend>链接来源</legend>
+    <label><input type="checkbox" id="source_official" checked /> 官方商店</label>
+    <label><input type="checkbox" id="source_crxsoso" checked /> CRX Soso</label>
+  </fieldset>
 
-  <hr />
+  <button id="parseBtn">解析扩展</button>
+  <button id="openBtn">打开符合条件的链接</button>
 
-  <strong data-i18n="source_select"></strong><br />
-  <label><input type="checkbox" id="srcOfficial" checked /> Official</label>
-  <label><input type="checkbox" id="srcCrx" checked /> CRX Soso</label>
+  <div id="errorBox" class="error"></div>
 
-  <hr />
-
-  <button id="parseBtn" data-i18n="btn_parse"></button>
-  <button id="openBtn" data-i18n="btn_open"></button>
-</div>
-
-<pre id="outputBox"></pre>
+  <h2>解析结果</h2>
+  <pre id="outputBox"></pre>
 
 </body>
 </html>
