@@ -57,34 +57,21 @@ function parseFromChannel(list) {
 
     const channel = item.channel.toLowerCase();
 
-    if (channel === "edge") {
+    if (channel === "edge" || channel === "chrome") {
       result.push({
         family: "chromium",
-        primary: "edge",
+        platform: channel,        // 🔥 关键：edge / chrome
         id: item.id,
         name: item.name,
-        officialUrl: item.webStoreUrl,
-        source: "official"
-      });
-    }
-
-    if (channel === "chrome") {
-      result.push({
-        family: "chromium",
-        primary: "chrome",
-        id: item.id,
-        name: item.name,
-        officialUrl: item.webStoreUrl,
-        source: "official"
+        officialUrl: item.webStoreUrl
       });
     }
 
     if (channel === "firefox") {
       result.push({
         family: "firefox",
-        slug: item.slug,
-        uuid: item.id,
-        source: "official"
+        platform: "firefox",
+        uuid: item.id
       });
     }
   }
@@ -125,53 +112,40 @@ function buildLinks(list) {
   return list.map(ext => {
     const links = [];
 
+    /* ---------- Chromium ---------- */
     if (ext.family === "chromium") {
-      // 主来源（来自 channel）
+      // 官方链接
       links.push({
-        browser: ext.primary,
-        url: ext.officialUrl,
-        source: ext.source,
-        primary: true
+        source: "official",
+        platform: ext.platform,
+        browser: ext.platform,
+        url: ext.officialUrl
       });
 
-      // 可选：另一个 Chromium 商店
-      if (ext.primary === "edge") {
-        links.push({
-          browser: "chrome",
-          url: `https://chrome.google.com/webstore/detail/${ext.id}`,
-          source: "official",
-          optional: true
-        });
-      }
-
-      if (ext.primary === "chrome") {
-        links.push({
-          browser: "edge",
-          url: `https://microsoftedge.microsoft.com/addons/detail/${ext.id}`,
-          source: "official",
-          optional: true
-        });
-      }
-
-      // 国内兜底
+      // CRXSoso（按 platform 区分路径）
       links.push({
-        browser: "crxsoso",
-        url: `https://www.crxsoso.com/webstore/detail/${ext.id}`,
-        source: "crxsoso"
+        source: "crxsoso",
+        platform: ext.platform,
+        url:
+          ext.platform === "edge"
+            ? `https://www.crxsoso.com/edge/detail/${ext.id}`
+            : `https://www.crxsoso.com/webstore/detail/${ext.id}`
       });
     }
 
+    /* ---------- Firefox ---------- */
     if (ext.family === "firefox" && ext.slug) {
       links.push({
+        source: "official",
+        platform: "firefox",
         browser: "firefox",
-        url: `https://addons.mozilla.org/firefox/addon/${ext.slug}/`,
-        source: ext.source,
-        primary: true
+        url: `https://addons.mozilla.org/firefox/addon/${ext.slug}/`
       });
+
       links.push({
-        browser: "crxsoso",
-        url: `https://www.crxsoso.com/firefox/detail/${ext.slug}`,
-        source: "crxsoso"
+        source: "crxsoso",
+        platform: "firefox",
+        url: `https://www.crxsoso.com/firefox/detail/${ext.slug}`
       });
     }
 
@@ -197,16 +171,20 @@ function openLinksBySelection(data) {
 
   data.forEach(ext => {
     ext.links.forEach(link => {
-      // CRXSoso：只看来源
+      // CRXSoso：按 platform 过滤
       if (link.source === "crxsoso") {
-        if (selectedSource.crxsoso) {
+        if (
+          selectedSource.crxsoso &&
+          selectedBrowser[link.platform]
+        ) {
           urls.push(link.url);
         }
         return;
       }
 
-      // 官方来源：浏览器 + 来源 双判断
+      // 官方
       if (
+        link.source === "official" &&
         selectedSource.official &&
         selectedBrowser[link.browser]
       ) {
