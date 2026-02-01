@@ -21,39 +21,38 @@ export async function buildDownloadLinks(ext) {
 
   // Chromium
   if (ext.browser === "chromium" && ext.id) {
-    links.push(
-      {
-        type: "official",
-        browser: "chromium",
-        url: `https://chrome.google.com/webstore/detail/${ext.id}`
-      },
-      {
-        type: "crxsoso",
-        browser: "chrome",
-        url: `https://www.crxsoso.com/webstore/detail/${ext.id}`
-      },
-      {
-        type: "crxsoso",
-        browser: "edge",
-        url: `https://www.crxsoso.com/addon/detail/${ext.id}`
-      }
-    );
+    links.push({
+      type: "official",
+      browser: "chromium",
+      url: `https://chrome.google.com/webstore/detail/${ext.id}`
+    });
+
+    links.push({
+      type: "crxsoso",
+      browser: "chrome",
+      url: `https://www.crxsoso.com/webstore/detail/${ext.id}`
+    });
+
+    links.push({
+      type: "crxsoso",
+      browser: "edge",
+      url: `https://www.crxsoso.com/addon/detail/${ext.id}`
+    });
   }
 
   // Firefox（slug 已知）
   if (ext.browser === "firefox" && ext.slug) {
-    links.push(
-      {
-        type: "official",
-        browser: "firefox",
-        url: `https://addons.mozilla.org/firefox/addon/${ext.slug}/`
-      },
-      {
-        type: "crxsoso",
-        browser: "firefox",
-        url: `https://www.crxsoso.com/firefox/detail/${ext.slug}`
-      }
-    );
+    links.push({
+      type: "official",
+      browser: "firefox",
+      url: `https://addons.mozilla.org/firefox/addon/${ext.slug}/`
+    });
+
+    links.push({
+      type: "crxsoso",
+      browser: "firefox",
+      url: `https://www.crxsoso.com/firefox/detail/${ext.slug}`
+    });
   }
 
   // Firefox（只有 uuid）
@@ -81,10 +80,8 @@ export async function buildDownloadLinks(ext) {
 }
 
 export async function attachLinks(extList) {
-  return Promise.all(
-    extList.map(async ext => ({
-      ...ext,
-      links: await buildDownloadLinks(ext)
-    }))
-  );
+  return extList.map(ext => ({
+    ...ext,
+    links: buildDownloadLinks(ext)
+  }));
 }
