@@ -1,108 +1,185 @@
+// app.js
 let finalData = [];
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("parseBtn").onclick = parseAll;
-  document.getElementById("openBtn").onclick = openSelectedLinks;
+  const inputBox = document.getElementById("inputBox");
+  const outputBox = document.getElementById("outputBox");
+  const errorBox = document.getElementById("errorBox");
+  const parseBtn = document.getElementById("parseBtn");
+  const openBtn = document.getElementById("openBtn");
+  const openDelayBtn = document.getElementById("openDelayBtn");
+  const delayInput = document.getElementById("delayInput");
+
+  parseBtn.onclick = async () => {
+    const text = inputBox.value.trim();
+    if (!text) return;
+
+    errorBox.textContent = "";
+    outputBox.textContent = "";
+
+    if (isEncryptedShareText(text)) {
+      errorBox.textContent =
+        currentLang === "zh"
+          ? "检测到加密分享文本。该格式不受支持。"
+          : "Encrypted share text detected. This format is not supported.";
+      return;
+    }
+
+    const parsed = parseExtensions(text);
+    const resolved = await resolveUUIDs(parsed);
+
+    finalData = attachLinks(resolved);
+    outputBox.textContent = JSON.stringify(finalData, null, 2);
+    alert(`Parsed ${finalData.length} extensions`);
+  };
+
+  openBtn.onclick = () => openLinksSafely(finalData, 0);
+
+  openDelayBtn.onclick = () => {
+    const delay = Number(delayInput.value) || 500;
+    openLinksSafely(finalData, delay);
+  };
 });
 
-async function parseAll() {
-  const text = document.getElementById("inputBox").value;
-  const parsed = parseExtensions(text);
-  const resolved = await resolveUUIDs(parsed);
-  finalData = buildLinks(resolved);
-  document.getElementById("outputBox").textContent =
-    JSON.stringify(finalData, null, 2);
+/* ================= 加密文本检测 ================= */
+
+function isEncryptedShareText(text) {
+  return /-{4,}\s*BEGIN\s*-{4,}/i.test(text);
 }
 
-/* ================= 解析插件 ================= */
+/* ================= 解析扩展 ================= */
 
 function parseExtensions(text) {
-  const list = [];
+  const results = [];
+  const seen = new Set();
 
-  // Chromium
-  (text.match(/\b[a-p]{32}\b/g) || []).forEach(id => {
-    list.push({ family: "chromium", id });
-  });
+  function add(ext) {
+    const key = ext.browser + ":" + (ext.id || ext.slug || ext.uuid);
+    if (!seen.has(key)) {
+      seen.add(key);
+      results.push(ext);
+    }
+  }
 
-  // Firefox slug@domain
-  (text.match(/\b([a-z0-9-]+)@[a-z0-9.-]+\b/gi) || []).forEach(m => {
-    if (!m.endsWith("@mozac.org")) {
-      list.push({ family: "firefox", slug: m.split("@")[0] });
+  /* ---------- Firefox about:support 表格（过滤 app-builtin） ---------- */
+  const lines = text.split("\n");
+  lines.forEach(line => {
+    if (/app-builtin/i.test(line)) return; // 👈 关键过滤点
+
+    // slug@domain
+    const slugMatch = line.match(/\b([a-z0-9-]+)@[a-z0-9.-]+\b/i);
+    if (slugMatch) {
+      add({ browser: "firefox", slug: slugMatch[1] });
+      return;
+    }
+
+    // UUID
+    const uuidMatch = line.match(/\{[0-9a-fA-F-]{36}\}/);
+    if (uuidMatch) {
+      add({
+        browser: "firefox",
+        uuid: uuidMatch[0],
+        needsResolve: true
+      });
     }
   });
 
-  // Firefox UUID
-  (text.match(/\{[0-9a-fA-F-]{36}\}/g) || []).forEach(uuid => {
-    list.push({ family: "firefox", uuid, needsResolve: true });
+  /* ---------- Chromium 扩展 ID ---------- */
+  (text.match(/\b[a-p]{32}\b/g) || []).forEach(id => {
+    add({ browser: "chromium", id });
   });
 
-  return list;
+  /* ---------- AMO URL ---------- */
+  (text.match(/addons\.mozilla\.org\/[^/]+\/addon\/([a-z0-9-]+)/gi) || []).forEach(
+    m => {
+      add({ browser: "firefox", slug: m.split("/").pop() });
+    }
+  );
+
+  return results;
 }
 
-/* ================= UUID → slug ================= */
+/* ================= UUID → slug（官方 v5 detail API） ================= */
 
 async function resolveUUIDs(list) {
   for (const ext of list) {
-    if (ext.needsResolve) {
-      const data = await fetch(
-        `https://addons.mozilla.org/api/v5/addons/addon/${ext.uuid.replace(/[{}]/g,"")}/`
-      ).then(r => r.ok ? r.json() : null);
-
-      if (data?.slug) ext.slug = data.slug;
-      else if (data?.url)
-        ext.slug = data.url.split("/addon/")[1]?.replace("/", "");
+    if (ext.browser === "firefox" && ext.needsResolve && ext.uuid) {
+      const slug = await resolveFirefoxUUID(ext.uuid);
+      if (slug) {
+        ext.slug = slug;
+        delete ext.needsResolve;
+      } else {
+        ext.unresolvable = true;
+        ext.reason = "UUID not found in AMO";
+      }
     }
   }
   return list;
 }
 
-/* ================= 构建链接（按浏览器分类） ================= */
+async function resolveFirefoxUUID(uuid) {
+  const clean = uuid.replace(/[{}]/g, "");
+  const url = `https://addons.mozilla.org/api/v5/addons/addon/${clean}/`;
 
-function buildLinks(list) {
-  return list.map(ext => {
-    const links = [];
+  try {
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!res.ok) return null;
 
-    if (ext.family === "chromium") {
-      links.push(
-        { browser: "chrome", url: `https://chrome.google.com/webstore/detail/${ext.id}` },
-        { browser: "edge", url: `https://microsoftedge.microsoft.com/addons/detail/${ext.id}` },
-        { browser: "chrome", url: `https://www.crxsoso.com/webstore/detail/${ext.id}` },
-        { browser: "edge", url: `https://www.crxsoso.com/addon/detail/${ext.id}` }
-      );
+    const data = await res.json();
+
+    // ① 首选 slug
+    if (data.slug) return data.slug;
+
+    // ② url 兜底（从 /addon/{slug}/ 反推）
+    if (data.url) {
+      const m = data.url.match(/addon\/([^/]+)/);
+      if (m) return m[1];
     }
+  } catch {
+    return null;
+  }
 
-    if (ext.family === "firefox" && ext.slug) {
-      links.push(
-        { browser: "firefox", url: `https://addons.mozilla.org/firefox/addon/${ext.slug}/` },
-        { browser: "firefox", url: `https://www.crxsoso.com/firefox/detail/${ext.slug}` }
-      );
-    }
-
-    return { ...ext, links };
-  });
+  return null;
 }
 
-/* ================= 打开符合用户选择的链接 ================= */
+/* ================= 构建下载链接 ================= */
 
-function openSelectedLinks() {
-  const use = {
-    chrome: document.getElementById("brChrome").checked,
-    edge: document.getElementById("brEdge").checked,
-    firefox: document.getElementById("brFirefox").checked,
-    official: document.getElementById("srcOfficial").checked,
-    crx: document.getElementById("srcCrx").checked
-  };
+function attachLinks(list) {
+  return list.map(ext => ({
+    ...ext,
+    links: buildDownloadLinks(ext)
+  }));
+}
 
+function buildDownloadLinks(ext) {
+  const links = [];
+
+  if (ext.browser === "chromium" && ext.id) {
+    links.push({ type: "official", url: `https://chrome.google.com/webstore/detail/${ext.id}` });
+    links.push({ type: "crxsoso", url: `https://www.crxsoso.com/webstore/detail/${ext.id}` });
+    links.push({ type: "crxsoso", url: `https://www.crxsoso.com/addon/detail/${ext.id}` });
+  }
+
+  if (ext.browser === "firefox" && ext.slug) {
+    links.push({ type: "official", url: `https://addons.mozilla.org/firefox/addon/${ext.slug}/` });
+    links.push({ type: "crxsoso", url: `https://www.crxsoso.com/firefox/detail/${ext.slug}` });
+  }
+
+  return links;
+}
+
+/* ================= 批量打开 ================= */
+
+function openLinksSafely(data, delay = 0) {
   const urls = [];
+  data.forEach(ext => ext.links.forEach(l => urls.push(l.url)));
+  if (!urls.length) return;
 
-  finalData.forEach(ext => {
-    ext.links.forEach(l => {
-      if (!use[l.browser]) return;
-      if (!use.official && l.url.includes("google.com")) return;
-      if (!use.crx && l.url.includes("crxsoso")) return;
-      urls.push(l.url);
-    });
+  if (!confirm(`Open ${urls.length} links in new tabs?`)) return;
+
+  urls.forEach((url, i) => {
+    delay
+      ? setTimeout(() => window.open(url, "_blank"), i * delay)
+      : window.open(url, "_blank");
   });
-
-  urls.forEach(u => window.open(u, "_blank"));
 }
