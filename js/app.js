@@ -1,4 +1,3 @@
-// app.js
 let finalData = [];
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -7,7 +6,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const errorBox = document.getElementById("errorBox");
   const parseBtn = document.getElementById("parseBtn");
   const openBtn = document.getElementById("openBtn");
+  const fileInput = document.getElementById("fileInput");
 
+  // 文件导入处理
+  fileInput.addEventListener("change", handleFileUpload);
+
+  // 解析按钮
   parseBtn.onclick = async () => {
     const text = inputBox.value.trim();
     if (!text) return;
@@ -22,10 +26,24 @@ document.addEventListener("DOMContentLoaded", () => {
     outputBox.textContent = JSON.stringify(finalData, null, 2);
   };
 
+  // 打开符合条件的链接
   openBtn.onclick = () => openLinksSafely(finalData);
 });
 
-/* ================= 解析 about:support 表格 ================= */
+// 处理文件导入
+async function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const content = e.target.result;
+    inputBox.value = content;
+  };
+  reader.readAsText(file);
+}
+
+/* ================= 解析扩展 ================= */
 
 function parseExtensions(text) {
   const results = [];
@@ -42,13 +60,9 @@ function parseExtensions(text) {
   const lines = text.split("\n");
 
   lines.forEach(line => {
-    // 只处理表格行
-    if (!line.includes("\t")) return;
+    if (!line.includes("\t")) return;  // 必须是表格行
+    if (/app-builtin/i.test(line)) return;  // 🚫 过滤系统扩展
 
-    // 过滤系统内置扩展
-    if (/app-builtin/i.test(line)) return;
-
-    // UUID（Firefox）
     const uuidMatch = line.match(/\{[0-9a-fA-F-]{36}\}/);
     if (uuidMatch) {
       add({
@@ -59,7 +73,6 @@ function parseExtensions(text) {
       return;
     }
 
-    // slug@domain（Firefox）
     const slugMatch = line.match(/\b([a-z0-9-]+)@[a-z0-9.-]+\b/i);
     if (slugMatch) {
       add({
@@ -69,7 +82,6 @@ function parseExtensions(text) {
     }
   });
 
-  // Chromium 扩展（无表格，允许全文扫描）
   (text.match(/\b[a-p]{32}\b/g) || []).forEach(id => {
     add({ browser: "chromium", id });
   });
@@ -77,7 +89,7 @@ function parseExtensions(text) {
   return results;
 }
 
-/* ================= UUID → slug（AMO v5，关键修复） ================= */
+/* ================= UUID → slug（AMO v5，修正 URL 编码） ================= */
 
 async function resolveUUIDs(list) {
   for (const ext of list) {
@@ -95,22 +107,16 @@ async function resolveUUIDs(list) {
 }
 
 async function resolveFirefoxUUID(uuid) {
-  // ✅ 关键：保留 {} 并进行 URL 编码
   const encoded = encodeURIComponent(uuid);
   const url = `https://addons.mozilla.org/api/v5/addons/addon/${encoded}/`;
 
   try {
-    const res = await fetch(url, {
-      headers: { Accept: "application/json" }
-    });
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
     if (!res.ok) return null;
 
     const data = await res.json();
-
-    // ① slug
     if (data.slug) return data.slug;
 
-    // ② url 兜底
     if (data.url) {
       const m = data.url.match(/addon\/([^/]+)/);
       if (m) return m[1];
@@ -120,6 +126,18 @@ async function resolveFirefoxUUID(uuid) {
   }
 
   return null;
+}
+
+/* ================= 检测 Chromium 系扩展浏览器适配 ================= */
+
+function checkChromiumCompatibility(id) {
+  const chromeLink = `https://chrome.google.com/webstore/detail/${id}`;
+  const edgeLink = `https://microsoftedge.microsoft.com/addons/detail/${id}`;
+
+  return {
+    chrome: chromeLink,
+    edge: edgeLink
+  };
 }
 
 /* ================= 构建下载链接 ================= */
@@ -135,13 +153,30 @@ function buildDownloadLinks(ext) {
   const links = [];
 
   if (ext.browser === "chromium" && ext.id) {
-    links.push({ url: `https://chrome.google.com/webstore/detail/${ext.id}` });
-    links.push({ url: `https://www.crxsoso.com/webstore/detail/${ext.id}` });
+    const compatibility = checkChromiumCompatibility(ext.id);
+    links.push({
+      browser: "chrome",
+      url: compatibility.chrome
+    });
+    links.push({
+      browser: "edge",
+      url: compatibility.edge
+    });
+    links.push({
+      browser: "crxsoso",
+      url: `https://www.crxsoso.com/webstore/detail/${ext.id}`
+    });
   }
 
   if (ext.browser === "firefox" && ext.slug) {
-    links.push({ url: `https://addons.mozilla.org/firefox/addon/${ext.slug}/` });
-    links.push({ url: `https://www.crxsoso.com/firefox/detail/${ext.slug}` });
+    links.push({
+      browser: "firefox",
+      url: `https://addons.mozilla.org/firefox/addon/${ext.slug}/`
+    });
+    links.push({
+      browser: "crxsoso",
+      url: `https://www.crxsoso.com/firefox/detail/${ext.slug}`
+    });
   }
 
   return links;
@@ -150,8 +185,29 @@ function buildDownloadLinks(ext) {
 /* ================= 批量打开 ================= */
 
 function openLinksSafely(data) {
+  const browserSelected = {
+    chrome: document.getElementById("browser_chrome").checked,
+    edge: document.getElementById("browser_edge").checked,
+    firefox: document.getElementById("browser_firefox").checked
+  };
+  const sourceSelected = {
+    official: document.getElementById("source_official").checked,
+    crxsoso: document.getElementById("source_crxsoso").checked
+  };
+
   const urls = [];
-  data.forEach(ext => ext.links.forEach(l => urls.push(l.url)));
+  data.forEach(ext => {
+    ext.links.forEach(link => {
+      const { browser, url } = link;
+      if (
+        (browserSelected[browser] || browser === "crxsoso") &&
+        (sourceSelected[link.browser] || sourceSelected.crxsoso)
+      ) {
+        urls.push(url);
+      }
+    });
+  });
+
   if (!urls.length) return;
 
   if (!confirm(`Open ${urls.length} links?`)) return;
