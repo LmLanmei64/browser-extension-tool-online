@@ -18,4 +18,6 @@ document.getElementById("parseBtn").onclick = async () => {
   output.textContent = JSON.stringify(finalData, null, 2);
 };
 
-document.getElementById("openBtn").onclick = () => openLinks(finalData);
+document.getElementById("openBtn").onclick = () => {
+  openLinks(finalData);
+};

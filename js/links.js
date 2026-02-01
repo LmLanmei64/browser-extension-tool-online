@@ -1,87 +1,45 @@
-// links.js
+// parser.js
 
-async function resolveFirefoxByUUID(uuid) {
-  const url = `https://addons.mozilla.org/api/v5/addons/addon/${encodeURIComponent(uuid)}/`;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
+const CHROMIUM_ID_REGEX = /\b[a-p]{32}\b/g;
+const FIREFOX_SLUG_REGEX =
+  /addons\.mozilla\.org\/[^/]+\/addon\/([a-z0-9\-]+)/gi;
+const FIREFOX_UUID_REGEX =
+  /\{[0-9a-fA-F\-]{36}\}/g;
 
-    const data = await res.json();
-    return {
-      slug: data.slug,
-      downloadUrl: data.current_version?.file?.url || null
-    };
-  } catch {
-    return null;
-  }
-}
+export function parseExtensions(text) {
+  const results = [];
+  const seen = new Set();
 
-export async function buildDownloadLinks(ext) {
-  const links = [];
+  // Chromium 扩展
+  const chromiumMatches = text.match(CHROMIUM_ID_REGEX) || [];
+  chromiumMatches.forEach(id => {
+    const key = `chromium:${id}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      results.push({ browser: "chromium", id });
+    }
+  });
 
-  // Chromium
-  if (ext.browser === "chromium" && ext.id) {
-    links.push({
-      type: "official",
-      browser: "chromium",
-      url: `https://chrome.google.com/webstore/detail/${ext.id}`
-    });
-
-    links.push({
-      type: "crxsoso",
-      browser: "chrome",
-      url: `https://www.crxsoso.com/webstore/detail/${ext.id}`
-    });
-
-    links.push({
-      type: "crxsoso",
-      browser: "edge",
-      url: `https://www.crxsoso.com/addon/detail/${ext.id}`
-    });
-  }
-
-  // Firefox（slug 已知）
-  if (ext.browser === "firefox" && ext.slug) {
-    links.push({
-      type: "official",
-      browser: "firefox",
-      url: `https://addons.mozilla.org/firefox/addon/${ext.slug}/`
-    });
-
-    links.push({
-      type: "crxsoso",
-      browser: "firefox",
-      url: `https://www.crxsoso.com/firefox/detail/${ext.slug}`
-    });
-  }
-
-  // Firefox（只有 uuid）
-  if (ext.browser === "firefox" && ext.uuid && !ext.slug) {
-    const resolved = await resolveFirefoxByUUID(ext.uuid);
-    if (resolved) {
-      links.push(
-        {
-          type: "official",
-          browser: "firefox",
-          url: `https://addons.mozilla.org/firefox/addon/${resolved.slug}/`
-        }
-      );
-      if (resolved.downloadUrl) {
-        links.push({
-          type: "download",
-          browser: "firefox",
-          url: resolved.downloadUrl
-        });
-      }
+  // Firefox slug（AMO URL）
+  let match;
+  while ((match = FIREFOX_SLUG_REGEX.exec(text)) !== null) {
+    const slug = match[1];
+    const key = `firefox:slug:${slug}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      results.push({ browser: "firefox", slug });
     }
   }
 
-  return links;
-}
+  // Firefox UUID（about:support）
+  const uuidMatches = text.match(FIREFOX_UUID_REGEX) || [];
+  uuidMatches.forEach(uuid => {
+    const key = `firefox:uuid:${uuid}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      results.push({ browser: "firefox", uuid });
+    }
+  });
 
-export async function attachLinks(extList) {
-  return extList.map(ext => ({
-    ...ext,
-    links: buildDownloadLinks(ext)
-  }));
+  return results;
 }
