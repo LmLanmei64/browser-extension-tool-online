@@ -97,9 +97,7 @@ async function resolveFirefoxUUID(uuid) {
   const url = `https://addons.mozilla.org/api/v5/addons/addon/${clean}/`;
 
   try {
-    const res = await fetch(url, {
-      headers: { Accept: "application/json" }
-    });
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
     if (!res.ok) return null;
 
     const data = await res.json();
@@ -110,7 +108,8 @@ async function resolveFirefoxUUID(uuid) {
       const m = data.url.match(/addon\/([^/]+)/);
       if (m) return m[1];
     }
-  } catch {
+  } catch (e) {
+    console.error("Error resolving UUID", e);
     return null;
   }
 
