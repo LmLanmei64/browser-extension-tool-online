@@ -9,7 +9,7 @@
     textarea { width: 100%; box-sizing: border-box; font-family: monospace; font-size: 14px;}
     fieldset { margin-top: 12px; padding: 10px;}
     label { display: block; margin: 6px 0;}
-    button { margin-top: 10px; padding: 6px 12px; margin-right: 8px;}
+    button { margin-top: 10px; padding: 6px 12px;}
     pre { background: #f6f6f6; padding: 10px; overflow-x: auto; font-size: 13px;}
     .error { color: #a00; margin-top: 8px;}
   </style>
@@ -36,12 +36,11 @@
   </fieldset>
 
   <fieldset>
-    <label><input type="checkbox" id="detect_other_store" /> 检测另一商店是否存在（结果将缓存）</label>
+    <label><input type="checkbox" id="detect_other_store" /> 检测另一商店是否存在</label>
   </fieldset>
 
   <button id="parseBtn">解析扩展</button>
   <button id="openBtn">打开符合条件的链接</button>
-  <button id="clearCacheBtn">清理缓存</button>
 
   <div id="errorBox" class="error"></div>
 
