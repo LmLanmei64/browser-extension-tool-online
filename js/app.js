@@ -197,20 +197,29 @@ function openLinksBySelection(data) {
 
   data.forEach(ext => {
     ext.links.forEach(link => {
+      // CRXSoso：只看来源
+      if (link.source === "crxsoso") {
+        if (selectedSource.crxsoso) {
+          urls.push(link.url);
+        }
+        return;
+      }
+
+      // 官方来源：浏览器 + 来源 双判断
       if (
-        selectedBrowser[link.browser] &&
-        selectedSource[link.source]
+        selectedSource.official &&
+        selectedBrowser[link.browser]
       ) {
         urls.push(link.url);
       }
     });
   });
 
-  if (!urls.length) return;
+  if (!urls.length) {
+    alert("没有符合条件的链接");
+    return;
+  }
 
-  // 延时打开链接，避免被浏览器拦截
-  setTimeout(() => {
-    if (!confirm(`将打开 ${urls.length} 个链接，是否继续？`)) return;
-    urls.forEach(u => window.open(u, "_blank"));
-  }, 100);
+  if (!confirm(`将打开 ${urls.length} 个链接，是否继续？`)) return;
+  urls.forEach(u => window.open(u, "_blank"));
 }
