@@ -128,7 +128,7 @@ function buildLinks(list) {
         platform: ext.platform,
         url:
           ext.platform === "edge"
-            ? `https://www.crxsoso.com/edge/detail/${ext.id}`
+            ? `https://www.crxsoso.com/addon/detail/${ext.id}`
             : `https://www.crxsoso.com/webstore/detail/${ext.id}`
       });
     }
