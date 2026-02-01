@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
   openBtn.onclick = () => openLinksSafely(finalData);
 });
 
-/* ================= 解析扩展 ================= */
+/* ================= 解析 about:support 表格 ================= */
 
 function parseExtensions(text) {
   const results = [];
@@ -39,14 +39,16 @@ function parseExtensions(text) {
     }
   }
 
-  /* ---------- Firefox about:support 表格（严格按行） ---------- */
   const lines = text.split("\n");
 
   lines.forEach(line => {
-    if (!line.includes("\t")) return;           // 必须是表格行
-    if (/app-builtin/i.test(line)) return;      // 🚫 过滤系统扩展
+    // 只处理表格行
+    if (!line.includes("\t")) return;
 
-    // UUID（ID 列）
+    // 过滤系统内置扩展
+    if (/app-builtin/i.test(line)) return;
+
+    // UUID（Firefox）
     const uuidMatch = line.match(/\{[0-9a-fA-F-]{36}\}/);
     if (uuidMatch) {
       add({
@@ -57,7 +59,7 @@ function parseExtensions(text) {
       return;
     }
 
-    // slug@domain（ID 列）
+    // slug@domain（Firefox）
     const slugMatch = line.match(/\b([a-z0-9-]+)@[a-z0-9.-]+\b/i);
     if (slugMatch) {
       add({
@@ -67,7 +69,7 @@ function parseExtensions(text) {
     }
   });
 
-  /* ---------- Chromium 扩展 ID（全文扫描，没表格） ---------- */
+  // Chromium 扩展（无表格，允许全文扫描）
   (text.match(/\b[a-p]{32}\b/g) || []).forEach(id => {
     add({ browser: "chromium", id });
   });
@@ -75,7 +77,7 @@ function parseExtensions(text) {
   return results;
 }
 
-/* ================= UUID → slug（AMO v5 官方 API） ================= */
+/* ================= UUID → slug（AMO v5，关键修复） ================= */
 
 async function resolveUUIDs(list) {
   for (const ext of list) {
@@ -93,23 +95,27 @@ async function resolveUUIDs(list) {
 }
 
 async function resolveFirefoxUUID(uuid) {
-  const clean = uuid.replace(/[{}]/g, "");
-  const url = `https://addons.mozilla.org/api/v5/addons/addon/${clean}/`;
+  // ✅ 关键：保留 {} 并进行 URL 编码
+  const encoded = encodeURIComponent(uuid);
+  const url = `https://addons.mozilla.org/api/v5/addons/addon/${encoded}/`;
 
   try {
-    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    const res = await fetch(url, {
+      headers: { Accept: "application/json" }
+    });
     if (!res.ok) return null;
 
     const data = await res.json();
 
+    // ① slug
     if (data.slug) return data.slug;
 
+    // ② url 兜底
     if (data.url) {
       const m = data.url.match(/addon\/([^/]+)/);
       if (m) return m[1];
     }
-  } catch (e) {
-    console.error("Error resolving UUID", e);
+  } catch {
     return null;
   }
 
@@ -129,25 +135,13 @@ function buildDownloadLinks(ext) {
   const links = [];
 
   if (ext.browser === "chromium" && ext.id) {
-    links.push({
-      browser: "chrome",
-      url: `https://chrome.google.com/webstore/detail/${ext.id}`
-    });
-    links.push({
-      browser: "crxsoso",
-      url: `https://www.crxsoso.com/webstore/detail/${ext.id}`
-    });
+    links.push({ url: `https://chrome.google.com/webstore/detail/${ext.id}` });
+    links.push({ url: `https://www.crxsoso.com/webstore/detail/${ext.id}` });
   }
 
   if (ext.browser === "firefox" && ext.slug) {
-    links.push({
-      browser: "firefox",
-      url: `https://addons.mozilla.org/firefox/addon/${ext.slug}/`
-    });
-    links.push({
-      browser: "crxsoso",
-      url: `https://www.crxsoso.com/firefox/detail/${ext.slug}`
-    });
+    links.push({ url: `https://addons.mozilla.org/firefox/addon/${ext.slug}/` });
+    links.push({ url: `https://www.crxsoso.com/firefox/detail/${ext.slug}` });
   }
 
   return links;
@@ -161,6 +155,5 @@ function openLinksSafely(data) {
   if (!urls.length) return;
 
   if (!confirm(`Open ${urls.length} links?`)) return;
-
   urls.forEach(url => window.open(url, "_blank"));
 }
