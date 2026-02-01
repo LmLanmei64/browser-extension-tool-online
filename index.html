@@ -5,7 +5,7 @@
   <title>浏览器扩展解析工具</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 20px auto; }
+    body { font-family: system-ui, sans-serif; max-width: 960px; margin: 20px auto; }
     textarea { width: 100%; font-family: monospace; }
     fieldset { margin-top: 12px; padding: 8px; }
     label { display: block; margin: 4px 0; }
@@ -17,14 +17,14 @@
 
 <h1>浏览器扩展解析工具</h1>
 
-<textarea id="inputBox" rows="10"></textarea>
+<textarea id="inputBox" rows="10" placeholder="粘贴插件 JSON"></textarea>
 <input type="file" id="fileInput" />
 
 <fieldset>
   <legend>浏览器</legend>
   <label><input type="checkbox" id="browser_edge" checked> Edge</label>
   <label><input type="checkbox" id="browser_chrome" checked> Chrome</label>
-  <label><input type="checkbox" id="browser_firefox" checked> Firefox</label>
+  <label><input type="checkbox" id="browser_firefox" checked> Firefox</label> <!-- 添加 Firefox -->
 </fieldset>
 
 <fieldset>
@@ -34,10 +34,9 @@
 </fieldset>
 
 <fieldset>
-  <legend>检测</legend>
   <label>
-    <input type="checkbox" id="detect_other_store">
-    尝试检测另一官方商店是否存在（弱检测）
+    <input type="checkbox" id="detect_other_store" checked>
+    检测另一商店（官方 → CRXSoso → 判定）
   </label>
 </fieldset>
 

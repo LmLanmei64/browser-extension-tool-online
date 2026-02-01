@@ -15,28 +15,28 @@ document.getElementById("parseBtn").onclick = async () => {
 
   const parsed = parseFromChannel(raw);
   if (detect) weakDetectOtherStore(parsed);
-  finalData = buildLinks(parsed);
+  finalData = await buildLinks(parsed);  // 需要改成异步处理
 
   output.textContent = JSON.stringify(finalData, null, 2);
 };
 
 document.getElementById("openBtn").onclick = () => openLinks(finalData);
 
-/* ===== 解析 ===== */
-
 function parseFromChannel(list) {
-  return list.map(item => ({
-    id: item.id,
-    name: item.name,
-    platform: item.channel.toLowerCase(),
-    officialUrl: item.webStoreUrl,
-    existsInEdge: false,
-    existsInChrome: false
-  }));
+  return list
+    .filter(item => item.type !== "app-builtin")  // 排除系统插件
+    .map(item => ({
+      id: item.id,
+      name: item.name,
+      platform: item.channel.toLowerCase(),
+      officialUrl: item.webStoreUrl,
+      existsInEdge: false,
+      existsInChrome: false,
+      existsInFirefox: false  // Firefox 支持
+    }));
 }
 
-/* ===== 弱检测（不 await，不阻塞） ===== */
-
+// 弱检测（不阻塞）
 function weakDetectOtherStore(list) {
   list.forEach(ext => {
     if (ext.platform === "edge") {
@@ -52,56 +52,76 @@ function weakDetectOtherStore(list) {
   });
 }
 
-/* ===== 构建链接 + 状态 ===== */
-
-function buildLinks(list) {
-  return list.map(ext => {
-    let status = "unknown";
-    if (ext.platform === "edge") {
-      status = ext.existsInChrome ? "dual" : "edge-only";
-    }
-    if (ext.platform === "chrome") {
-      status = ext.existsInEdge ? "dual" : "chrome-only";
-    }
-
-    const links = [];
-
-    links.push({
-      source: "official",
-      platform: ext.platform,
-      url: ext.officialUrl
-    });
-
-    links.push({
-      source: "crxsoso",
-      platform: ext.platform,
-      url:
-        ext.platform === "edge"
-          ? `https://www.crxsoso.com/addon/detail/${ext.id}`
-          : `https://www.crxsoso.com/webstore/detail/${ext.id}`
-    });
-
-    return {
-      id: ext.id,
-      name: ext.name,
-      platform: ext.platform,
-      platformStatus: status,
-      links
-    };
-  });
+async function resolveFirefoxDownloadLink(uuid) {
+  const url = `https://addons.mozilla.org/api/v5/addons/addon/${encodeURIComponent(uuid)}/`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    return data.slug ? `https://addons.mozilla.org/firefox/downloads/file/${data.current_version.file.id}` : null;
+  } catch {
+    return null;
+  }
 }
 
-/* ===== 打开链接 ===== */
+async function buildLinks(list) {
+  return Promise.all(
+    list.map(async (ext) => {
+      let status = "unknown";
+      if (ext.platform === "edge") {
+        status = ext.existsInChrome ? "dual" : "edge-only";
+      }
+      if (ext.platform === "chrome") {
+        status = ext.existsInEdge ? "dual" : "chrome-only";
+      }
+
+      const links = [];
+
+      links.push({
+        source: "official",
+        platform: ext.platform,
+        url: ext.officialUrl,
+      });
+
+      links.push({
+        source: "crxsoso",
+        platform: ext.platform,
+        url:
+          ext.platform === "edge"
+            ? `https://www.crxsoso.com/addon/detail/${ext.id}`
+            : `https://www.crxsoso.com/webstore/detail/${ext.id}`,
+      });
+
+      if (ext.platform === "firefox") {
+        const firefoxDownloadLink = await resolveFirefoxDownloadLink(ext.id);
+        if (firefoxDownloadLink) {
+          links.push({
+            source: "official",
+            platform: "firefox",
+            url: firefoxDownloadLink,
+          });
+        }
+      }
+
+      return {
+        id: ext.id,
+        name: ext.name,
+        platform: ext.platform,
+        platformStatus: status,
+        links,
+      };
+    })
+  );
+}
 
 function openLinks(data) {
   const sb = {
-    edge: browser_edge.checked,
-    chrome: browser_chrome.checked,
-    firefox: browser_firefox.checked
+    edge: document.getElementById("browser_edge").checked,
+    chrome: document.getElementById("browser_chrome").checked,
+    firefox: document.getElementById("browser_firefox").checked
   };
   const ss = {
-    official: source_official.checked,
-    crxsoso: source_crxsoso.checked
+    official: document.getElementById("source_official").checked,
+    crxsoso: document.getElementById("source_crxsoso").checked
   };
 
   data.forEach(ext => {
