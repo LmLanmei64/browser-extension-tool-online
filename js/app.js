@@ -63,7 +63,8 @@ function parseFromChannel(list) {
         primary: "edge",
         id: item.id,
         name: item.name,
-        officialUrl: item.webStoreUrl
+        officialUrl: item.webStoreUrl,
+        source: "official"
       });
     }
 
@@ -73,7 +74,8 @@ function parseFromChannel(list) {
         primary: "chrome",
         id: item.id,
         name: item.name,
-        officialUrl: item.webStoreUrl
+        officialUrl: item.webStoreUrl,
+        source: "official"
       });
     }
 
@@ -81,7 +83,8 @@ function parseFromChannel(list) {
       result.push({
         family: "firefox",
         slug: item.slug,
-        uuid: item.id
+        uuid: item.id,
+        source: "official"
       });
     }
   }
@@ -103,7 +106,9 @@ async function resolveFirefoxUUIDs(list) {
 }
 
 async function resolveFirefoxUUID(uuid) {
-  const url = `https://addons.mozilla.org/api/v5/addons/addon/${encodeURIComponent(uuid)}/`;
+  const encoded = encodeURIComponent(uuid);
+  const url = `https://addons.mozilla.org/api/v5/addons/addon/${encoded}/`;
+
   try {
     const res = await fetch(url);
     if (!res.ok) return null;
@@ -125,6 +130,7 @@ function buildLinks(list) {
       links.push({
         browser: ext.primary,
         url: ext.officialUrl,
+        source: ext.source,
         primary: true
       });
 
@@ -133,6 +139,7 @@ function buildLinks(list) {
         links.push({
           browser: "chrome",
           url: `https://chrome.google.com/webstore/detail/${ext.id}`,
+          source: "official",
           optional: true
         });
       }
@@ -141,6 +148,7 @@ function buildLinks(list) {
         links.push({
           browser: "edge",
           url: `https://microsoftedge.microsoft.com/addons/detail/${ext.id}`,
+          source: "official",
           optional: true
         });
       }
@@ -148,7 +156,8 @@ function buildLinks(list) {
       // 国内兜底
       links.push({
         browser: "crxsoso",
-        url: `https://www.crxsoso.com/webstore/detail/${ext.id}`
+        url: `https://www.crxsoso.com/webstore/detail/${ext.id}`,
+        source: "crxsoso"
       });
     }
 
@@ -156,11 +165,13 @@ function buildLinks(list) {
       links.push({
         browser: "firefox",
         url: `https://addons.mozilla.org/firefox/addon/${ext.slug}/`,
+        source: ext.source,
         primary: true
       });
       links.push({
         browser: "crxsoso",
-        url: `https://www.crxsoso.com/firefox/detail/${ext.slug}`
+        url: `https://www.crxsoso.com/firefox/detail/${ext.slug}`,
+        source: "crxsoso"
       });
     }
 
@@ -171,17 +182,25 @@ function buildLinks(list) {
 /* ================= 按选择打开链接 ================= */
 
 function openLinksBySelection(data) {
-  const selected = {
+  const selectedBrowser = {
     chrome: document.getElementById("browser_chrome").checked,
     edge: document.getElementById("browser_edge").checked,
     firefox: document.getElementById("browser_firefox").checked
+  };
+
+  const selectedSource = {
+    official: document.getElementById("source_official").checked,
+    crxsoso: document.getElementById("source_crxsoso").checked
   };
 
   const urls = [];
 
   data.forEach(ext => {
     ext.links.forEach(link => {
-      if (selected[link.browser]) {
+      if (
+        selectedBrowser[link.browser] &&
+        selectedSource[link.source]
+      ) {
         urls.push(link.url);
       }
     });
