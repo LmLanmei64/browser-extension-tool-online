@@ -208,6 +208,9 @@ function openLinksBySelection(data) {
 
   if (!urls.length) return;
 
-  if (!confirm(`将打开 ${urls.length} 个链接，是否继续？`)) return;
-  urls.forEach(u => window.open(u, "_blank"));
+  // 延时打开链接，避免被浏览器拦截
+  setTimeout(() => {
+    if (!confirm(`将打开 ${urls.length} 个链接，是否继续？`)) return;
+    urls.forEach(u => window.open(u, "_blank"));
+  }, 100);
 }
