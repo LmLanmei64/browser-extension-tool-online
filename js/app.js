@@ -1,5 +1,7 @@
 let finalData = [];
 
+/* ================= 初始化 ================= */
+
 document.addEventListener("DOMContentLoaded", () => {
   const inputBox = document.getElementById("inputBox");
   const outputBox = document.getElementById("outputBox");
@@ -8,208 +10,185 @@ document.addEventListener("DOMContentLoaded", () => {
   const openBtn = document.getElementById("openBtn");
   const fileInput = document.getElementById("fileInput");
 
-  // 文件导入处理
   fileInput.addEventListener("change", handleFileUpload);
 
-  // 解析按钮
   parseBtn.onclick = async () => {
-    const text = inputBox.value.trim();
-    if (!text) return;
-
     errorBox.textContent = "";
     outputBox.textContent = "";
 
-    const parsed = parseExtensions(text);
-    const resolved = await resolveUUIDs(parsed);
+    let raw;
+    try {
+      raw = JSON.parse(inputBox.value.trim());
+    } catch {
+      errorBox.textContent = "无法解析输入内容（不是合法 JSON）";
+      return;
+    }
 
-    finalData = attachLinks(resolved);
+    const parsed = parseFromChannel(raw);
+    const resolved = await resolveFirefoxUUIDs(parsed);
+    finalData = buildLinks(resolved);
+
     outputBox.textContent = JSON.stringify(finalData, null, 2);
   };
 
-  // 打开符合条件的链接
-  openBtn.onclick = () => openLinksSafely(finalData);
+  openBtn.onclick = () => openLinksBySelection(finalData);
 });
 
-// 处理文件导入
-async function handleFileUpload(event) {
-  const file = event.target.files[0];
+/* ================= 文件导入 ================= */
+
+function handleFileUpload(e) {
+  const file = e.target.files[0];
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = function(e) {
-    const content = e.target.result;
-    inputBox.value = content;
+  reader.onload = ev => {
+    document.getElementById("inputBox").value = ev.target.result;
   };
   reader.readAsText(file);
 }
 
-/* ================= 解析扩展 ================= */
+/* ================= 从 channel 解析 ================= */
 
-function parseExtensions(text) {
-  const results = [];
-  const seen = new Set();
+function parseFromChannel(list) {
+  const result = [];
 
-  function add(ext) {
-    const key = ext.browser + ":" + (ext.id || ext.slug || ext.uuid);
-    if (!seen.has(key)) {
-      seen.add(key);
-      results.push(ext);
+  for (const item of list) {
+    if (!item.id || !item.channel) continue;
+
+    const channel = item.channel.toLowerCase();
+
+    if (channel === "edge") {
+      result.push({
+        family: "chromium",
+        primary: "edge",
+        id: item.id,
+        name: item.name,
+        officialUrl: item.webStoreUrl
+      });
+    }
+
+    if (channel === "chrome") {
+      result.push({
+        family: "chromium",
+        primary: "chrome",
+        id: item.id,
+        name: item.name,
+        officialUrl: item.webStoreUrl
+      });
+    }
+
+    if (channel === "firefox") {
+      result.push({
+        family: "firefox",
+        slug: item.slug,
+        uuid: item.id
+      });
     }
   }
 
-  const lines = text.split("\n");
-
-  lines.forEach(line => {
-    if (!line.includes("\t")) return;  // 必须是表格行
-    if (/app-builtin/i.test(line)) return;  // 🚫 过滤系统扩展
-
-    const uuidMatch = line.match(/\{[0-9a-fA-F-]{36}\}/);
-    if (uuidMatch) {
-      add({
-        browser: "firefox",
-        uuid: uuidMatch[0],
-        needsResolve: true
-      });
-      return;
-    }
-
-    const slugMatch = line.match(/\b([a-z0-9-]+)@[a-z0-9.-]+\b/i);
-    if (slugMatch) {
-      add({
-        browser: "firefox",
-        slug: slugMatch[1]
-      });
-    }
-  });
-
-  (text.match(/\b[a-p]{32}\b/g) || []).forEach(id => {
-    add({ browser: "chromium", id });
-  });
-
-  return results;
+  return result;
 }
 
-/* ================= UUID → slug（AMO v5，修正 URL 编码） ================= */
+/* ================= Firefox UUID → slug ================= */
 
-async function resolveUUIDs(list) {
+async function resolveFirefoxUUIDs(list) {
   for (const ext of list) {
-    if (ext.browser === "firefox" && ext.needsResolve && ext.uuid) {
+    if (ext.family === "firefox" && ext.uuid && !ext.slug) {
       const slug = await resolveFirefoxUUID(ext.uuid);
-      if (slug) {
-        ext.slug = slug;
-        delete ext.needsResolve;
-      } else {
-        ext.unresolvable = true;
-      }
+      if (slug) ext.slug = slug;
+      else ext.unresolvable = true;
     }
   }
   return list;
 }
 
 async function resolveFirefoxUUID(uuid) {
-  const encoded = encodeURIComponent(uuid);
-  const url = `https://addons.mozilla.org/api/v5/addons/addon/${encoded}/`;
-
+  const url = `https://addons.mozilla.org/api/v5/addons/addon/${encodeURIComponent(uuid)}/`;
   try {
-    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    const res = await fetch(url);
     if (!res.ok) return null;
-
     const data = await res.json();
-    if (data.slug) return data.slug;
-
-    if (data.url) {
-      const m = data.url.match(/addon\/([^/]+)/);
-      if (m) return m[1];
-    }
+    return data.slug || null;
   } catch {
     return null;
   }
-
-  return null;
 }
 
-/* ================= 检测 Chromium 系扩展浏览器适配 ================= */
+/* ================= 构建链接 ================= */
 
-function checkChromiumCompatibility(id) {
-  const chromeLink = `https://chrome.google.com/webstore/detail/${id}`;
-  const edgeLink = `https://microsoftedge.microsoft.com/addons/detail/${id}`;
+function buildLinks(list) {
+  return list.map(ext => {
+    const links = [];
 
-  return {
-    chrome: chromeLink,
-    edge: edgeLink
-  };
+    if (ext.family === "chromium") {
+      // 主来源（来自 channel）
+      links.push({
+        browser: ext.primary,
+        url: ext.officialUrl,
+        primary: true
+      });
+
+      // 可选：另一个 Chromium 商店
+      if (ext.primary === "edge") {
+        links.push({
+          browser: "chrome",
+          url: `https://chrome.google.com/webstore/detail/${ext.id}`,
+          optional: true
+        });
+      }
+
+      if (ext.primary === "chrome") {
+        links.push({
+          browser: "edge",
+          url: `https://microsoftedge.microsoft.com/addons/detail/${ext.id}`,
+          optional: true
+        });
+      }
+
+      // 国内兜底
+      links.push({
+        browser: "crxsoso",
+        url: `https://www.crxsoso.com/webstore/detail/${ext.id}`
+      });
+    }
+
+    if (ext.family === "firefox" && ext.slug) {
+      links.push({
+        browser: "firefox",
+        url: `https://addons.mozilla.org/firefox/addon/${ext.slug}/`,
+        primary: true
+      });
+      links.push({
+        browser: "crxsoso",
+        url: `https://www.crxsoso.com/firefox/detail/${ext.slug}`
+      });
+    }
+
+    return { ...ext, links };
+  });
 }
 
-/* ================= 构建下载链接 ================= */
+/* ================= 按选择打开链接 ================= */
 
-function attachLinks(list) {
-  return list.map(ext => ({
-    ...ext,
-    links: buildDownloadLinks(ext)
-  }));
-}
-
-function buildDownloadLinks(ext) {
-  const links = [];
-
-  if (ext.browser === "chromium" && ext.id) {
-    const compatibility = checkChromiumCompatibility(ext.id);
-    links.push({
-      browser: "chrome",
-      url: compatibility.chrome
-    });
-    links.push({
-      browser: "edge",
-      url: compatibility.edge
-    });
-    links.push({
-      browser: "crxsoso",
-      url: `https://www.crxsoso.com/webstore/detail/${ext.id}`
-    });
-  }
-
-  if (ext.browser === "firefox" && ext.slug) {
-    links.push({
-      browser: "firefox",
-      url: `https://addons.mozilla.org/firefox/addon/${ext.slug}/`
-    });
-    links.push({
-      browser: "crxsoso",
-      url: `https://www.crxsoso.com/firefox/detail/${ext.slug}`
-    });
-  }
-
-  return links;
-}
-
-/* ================= 批量打开 ================= */
-
-function openLinksSafely(data) {
-  const browserSelected = {
+function openLinksBySelection(data) {
+  const selected = {
     chrome: document.getElementById("browser_chrome").checked,
     edge: document.getElementById("browser_edge").checked,
     firefox: document.getElementById("browser_firefox").checked
   };
-  const sourceSelected = {
-    official: document.getElementById("source_official").checked,
-    crxsoso: document.getElementById("source_crxsoso").checked
-  };
 
   const urls = [];
+
   data.forEach(ext => {
     ext.links.forEach(link => {
-      const { browser, url } = link;
-      if (
-        (browserSelected[browser] || browser === "crxsoso") &&
-        (sourceSelected[link.browser] || sourceSelected.crxsoso)
-      ) {
-        urls.push(url);
+      if (selected[link.browser]) {
+        urls.push(link.url);
       }
     });
   });
 
   if (!urls.length) return;
 
-  if (!confirm(`Open ${urls.length} links?`)) return;
-  urls.forEach(url => window.open(url, "_blank"));
+  if (!confirm(`将打开 ${urls.length} 个链接，是否继续？`)) return;
+  urls.forEach(u => window.open(u, "_blank"));
 }
