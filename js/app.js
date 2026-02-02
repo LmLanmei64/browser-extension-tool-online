@@ -4,18 +4,28 @@ import { openLinks } from "./opener.js";
 
 let finalData = [];
 
-document.getElementById("parseBtn").onclick = async () => {
-  const input = document.getElementById("inputBox").value;
-  const output = document.getElementById("outputBox");
+const inputBox = document.getElementById("inputBox");
+const fileInput = document.getElementById("fileInput");
+const outputBox = document.getElementById("outputBox");
 
-  const parsed = parseExtensions(input);
+fileInput.addEventListener("change", () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    inputBox.value = e.target.result;
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById("parseBtn").onclick = async () => {
+  const parsed = parseExtensions(inputBox.value);
   if (!parsed.length) {
-    output.textContent = "未识别到任何扩展";
+    outputBox.textContent = "未识别到任何扩展";
     return;
   }
-
   finalData = await attachLinks(parsed);
-  output.textContent = JSON.stringify(finalData, null, 2);
+  outputBox.textContent = JSON.stringify(finalData, null, 2);
 };
 
 document.getElementById("openBtn").onclick = () => {
@@ -40,7 +50,6 @@ function collectUrls() {
     alert("请至少选择一个浏览器");
     return null;
   }
-
   if (!Object.values(sources).some(Boolean)) {
     alert("请至少选择一个来源");
     return null;
@@ -55,31 +64,19 @@ function collectUrls() {
   finalData.forEach(ext => {
     const links = ext.links || [];
 
-    // 官方（只选一个）
     if (sources.official) {
-      const candidates = links.filter(
-        l =>
-          l.browser in browsers &&
-          browsers[l.browser] &&
-          (
-            officialMode === "download"
-              ? l.type === "official-download"
-              : l.type === "official-page"
-          )
+      const chosen = links.find(l =>
+        browsers[l.browser] &&
+        (officialMode === "download"
+          ? l.type === "official-download"
+          : l.type === "official-page")
       );
-
-      if (candidates[0]) {
-        urls.push(candidates[0].url);
-      }
+      if (chosen) urls.push(chosen.url);
     }
 
-    // CRXSoso
     if (sources.crxsoso) {
       links.forEach(l => {
-        if (
-          l.type === "crxsoso" &&
-          browsers[l.browser]
-        ) {
+        if (l.type === "crxsoso" && browsers[l.browser]) {
           urls.push(l.url);
         }
       });
