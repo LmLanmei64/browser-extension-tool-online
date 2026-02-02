@@ -19,63 +19,66 @@ document.getElementById("parseBtn").onclick = async () => {
 };
 
 document.getElementById("openBtn").onclick = () => {
-  const urls = collectUrlsByUserChoice(finalData);
+  const urls = collectUrls();
   if (!urls) return;
   openLinks(urls);
 };
 
-/* =========================
-   用户选择逻辑（核心）
-========================= */
-
-function collectUrlsByUserChoice(data) {
-  const browserSelected = {
-    edge: document.getElementById("browser_edge").checked,
-    chrome: document.getElementById("browser_chrome").checked,
-    firefox: document.getElementById("browser_firefox").checked
+function collectUrls() {
+  const browsers = {
+    edge: browser_edge.checked,
+    chrome: browser_chrome.checked,
+    firefox: browser_firefox.checked
   };
 
-  const sourceSelected = {
-    official: document.getElementById("source_official").checked,
-    crxsoso: document.getElementById("source_crxsoso").checked
+  const sources = {
+    official: source_official.checked,
+    crxsoso: source_crxsoso.checked
   };
 
-  // 校验：浏览器
-  if (!Object.values(browserSelected).some(Boolean)) {
+  if (!Object.values(browsers).some(Boolean)) {
     alert("请至少选择一个浏览器");
     return null;
   }
 
-  // 校验：来源
-  if (!Object.values(sourceSelected).some(Boolean)) {
+  if (!Object.values(sources).some(Boolean)) {
     alert("请至少选择一个来源");
     return null;
   }
 
+  const officialMode =
+    document.querySelector('input[name="official_mode"]:checked')?.value
+    || "download";
+
   const urls = [];
 
-  data.forEach(ext => {
+  finalData.forEach(ext => {
     const links = ext.links || [];
 
-    // === 官方：只取一个（默认下载）
-    if (sourceSelected.official) {
-      const officialLinks = links.filter(
-        l => l.type === "official" && browserSelected[l.browser]
+    // 官方（只选一个）
+    if (sources.official) {
+      const candidates = links.filter(
+        l =>
+          l.browser in browsers &&
+          browsers[l.browser] &&
+          (
+            officialMode === "download"
+              ? l.type === "official-download"
+              : l.type === "official-page"
+          )
       );
 
-      const download = officialLinks.find(l => l.url.includes("/downloads/"));
-      const page = officialLinks.find(l => !l.url.includes("/downloads/"));
-
-      const chosen = download || page;
-      if (chosen) urls.push(chosen.url);
+      if (candidates[0]) {
+        urls.push(candidates[0].url);
+      }
     }
 
-    // === CRXSoso
-    if (sourceSelected.crxsoso) {
+    // CRXSoso
+    if (sources.crxsoso) {
       links.forEach(l => {
         if (
           l.type === "crxsoso" &&
-          browserSelected[l.browser]
+          browsers[l.browser]
         ) {
           urls.push(l.url);
         }
@@ -84,7 +87,7 @@ function collectUrlsByUserChoice(data) {
   });
 
   if (!urls.length) {
-    alert("没有符合当前筛选条件的链接");
+    alert("没有符合当前条件的链接");
     return null;
   }
 

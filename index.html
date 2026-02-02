@@ -1,51 +1,126 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>浏览器扩展解析工具</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 960px; margin: 20px auto; }
-    textarea { width: 100%; font-family: monospace; }
-    fieldset { margin-top: 12px; padding: 8px; }
-    label { display: block; margin: 4px 0; }
-    button { margin-top: 10px; }
-    pre { background: #f5f5f5; padding: 10px; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont,
+                   "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+                   "Microsoft YaHei", sans-serif;
+      margin: 20px;
+      line-height: 1.5;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      box-sizing: border-box;
+      font-family: monospace;
+    }
+
+    .section {
+      margin-top: 20px;
+    }
+
+    .section strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    label {
+      margin-right: 12px;
+      white-space: nowrap;
+    }
+
+    button {
+      margin-right: 10px;
+      padding: 6px 14px;
+      cursor: pointer;
+    }
+
+    pre {
+      background: #f6f8fa;
+      padding: 10px;
+      overflow: auto;
+    }
   </style>
 </head>
 <body>
 
 <h1>浏览器扩展解析工具</h1>
 
-<textarea id="inputBox" rows="10" placeholder="粘贴插件 JSON"></textarea>
-<input type="file" id="fileInput" />
+<div class="section">
+  <textarea
+    id="inputBox"
+    placeholder="在此粘贴 about:support 表格、扩展 ID、或相关文本">
+  </textarea>
+</div>
 
-<fieldset>
-  <legend>浏览器</legend>
-  <label><input type="checkbox" id="browser_edge" checked> Edge</label>
-  <label><input type="checkbox" id="browser_chrome" checked> Chrome</label>
-  <label><input type="checkbox" id="browser_firefox" checked> Firefox</label> <!-- 添加 Firefox -->
-</fieldset>
-
-<fieldset>
-  <legend>来源</legend>
-  <label><input type="checkbox" id="source_official" checked> 官方商店</label>
-  <label><input type="checkbox" id="source_crxsoso" checked> CRXSoso</label>
-</fieldset>
-
-<fieldset>
+<div class="section">
+  <strong>浏览器</strong>
   <label>
-    <input type="checkbox" id="detect_other_store" checked>
-    检测另一商店（官方 → CRXSoso → 判定）
+    <input type="checkbox" id="browser_edge">
+    Edge
   </label>
-</fieldset>
+  <label>
+    <input type="checkbox" id="browser_chrome">
+    Chrome
+  </label>
+  <label>
+    <input type="checkbox" id="browser_firefox" checked>
+    Firefox
+  </label>
+</div>
 
-<button id="parseBtn">解析</button>
-<button id="openBtn">打开链接</button>
+<div class="section">
+  <strong>来源</strong>
+  <label>
+    <input type="checkbox" id="source_official" checked>
+    官方商店
+  </label>
+  <label>
+    <input type="checkbox" id="source_crxsoso">
+    CRXSoso
+  </label>
+</div>
 
-<pre id="outputBox"></pre>
+<div class="section">
+  <strong>官方链接类型</strong>
+  <label>
+    <input
+      type="radio"
+      name="official_mode"
+      value="download"
+      checked>
+    下载链接（默认）
+  </label>
+  <label>
+    <input
+      type="radio"
+      name="official_mode"
+      value="page">
+    插件页面
+  </label>
+</div>
 
+<div class="section">
+  <button id="parseBtn">解析</button>
+  <button id="openBtn">打开链接</button>
+</div>
+
+<div class="section">
+  <pre id="outputBox"></pre>
+</div>
+
+<!-- ⚠️ 必须是 module -->
 <script type="module" src="js/app.js"></script>
- <!-- 修改为 type="module" -->
+
 </body>
 </html>

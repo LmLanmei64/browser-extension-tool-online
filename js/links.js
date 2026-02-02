@@ -6,7 +6,6 @@ async function resolveFirefoxByUUID(uuid) {
   if (!res.ok) return null;
 
   const data = await res.json();
-
   return {
     slug: data.slug,
     download: data.current_version?.file?.url
@@ -22,7 +21,7 @@ export async function attachLinks(list) {
       if (ext.browser === "chromium") {
         links.push(
           {
-            type: "official",
+            type: "official-page",
             browser: "chromium",
             url: `https://chrome.google.com/webstore/detail/${ext.id}`
           },
@@ -39,46 +38,39 @@ export async function attachLinks(list) {
         );
       }
 
-      // Firefox slug
-      if (ext.browser === "firefox" && ext.slug) {
-        links.push(
-          {
-            type: "official",
+      // Firefox（slug 或 uuid）
+      if (ext.browser === "firefox") {
+        let slug = ext.slug;
+        let download = null;
+
+        if (ext.uuid) {
+          const r = await resolveFirefoxByUUID(ext.uuid);
+          if (r) {
+            slug = r.slug;
+            download = r.download;
+          }
+        }
+
+        if (slug) {
+          links.push({
+            type: "official-page",
             browser: "firefox",
-            url: `https://addons.mozilla.org/firefox/addon/${ext.slug}/`
-          },
-          {
+            url: `https://addons.mozilla.org/firefox/addon/${slug}/`
+          });
+
+          links.push({
             type: "crxsoso",
             browser: "firefox",
-            url: `https://www.crxsoso.com/firefox/detail/${ext.slug}`
-          }
-        );
-      }
+            url: `https://www.crxsoso.com/firefox/detail/${slug}`
+          });
+        }
 
-      // Firefox UUID → v5
-      if (ext.browser === "firefox" && ext.uuid) {
-        const r = await resolveFirefoxByUUID(ext.uuid);
-        if (r) {
-          links.push(
-            {
-              type: "official",
-              browser: "firefox",
-              url: `https://addons.mozilla.org/firefox/addon/${r.slug}/`
-            },
-            {
-              type: "crxsoso",
-              browser: "firefox",
-              url: `https://www.crxsoso.com/firefox/detail/${r.slug}`
-            }
-          );
-
-          if (r.download) {
-            links.push({
-              type: "download",
-              browser: "firefox",
-              url: r.download
-            });
-          }
+        if (download) {
+          links.push({
+            type: "official-download",
+            browser: "firefox",
+            url: download
+          });
         }
       }
 
