@@ -1,65 +1,82 @@
-// links.js
-
 async function resolveFirefoxByUUID(uuid) {
   const url =
     `https://addons.mozilla.org/api/v5/addons/addon/${encodeURIComponent(uuid)}/`;
 
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
+  const res = await fetch(url);
+  if (!res.ok) return null;
 
-    const data = await res.json();
-    return {
-      slug: data.slug,
-      downloadUrl: data.current_version?.file?.url || null
-    };
-  } catch {
-    return null;
-  }
+  const data = await res.json();
+
+  return {
+    slug: data.slug,
+    download: data.current_version?.file?.url
+  };
 }
 
-export async function attachLinks(extList) {
+export async function attachLinks(list) {
   return Promise.all(
-    extList.map(async ext => {
+    list.map(async ext => {
       const links = [];
 
-      // 处理 Chromium 扩展
-      if (ext.browser === "chromium" && ext.id) {
-        links.push({
-          type: "official",
-          browser: "chromium",
-          url: `https://chrome.google.com/webstore/detail/${ext.id}`
-        });
-        links.push({
-          type: "crxsoso",
-          browser: "edge",
-          url: `https://www.crxsoso.com/addon/detail/${ext.id}`
-        });
+      // Chromium
+      if (ext.browser === "chromium") {
+        links.push(
+          {
+            type: "official",
+            browser: "chromium",
+            url: `https://chrome.google.com/webstore/detail/${ext.id}`
+          },
+          {
+            type: "crxsoso",
+            browser: "chrome",
+            url: `https://www.crxsoso.com/webstore/detail/${ext.id}`
+          },
+          {
+            type: "crxsoso",
+            browser: "edge",
+            url: `https://www.crxsoso.com/addon/detail/${ext.id}`
+          }
+        );
       }
 
-      // 处理 Firefox 扩展
+      // Firefox slug
       if (ext.browser === "firefox" && ext.slug) {
-        links.push({
-          type: "official",
-          browser: "firefox",
-          url: `https://addons.mozilla.org/firefox/addon/${ext.slug}/`
-        });
-      }
-
-      // 处理只有 UUID 的情况
-      if (ext.browser === "firefox" && ext.uuid && !ext.slug) {
-        const resolved = await resolveFirefoxByUUID(ext.uuid);
-        if (resolved) {
-          links.push({
+        links.push(
+          {
             type: "official",
             browser: "firefox",
-            url: `https://addons.mozilla.org/firefox/addon/${resolved.slug}/`
-          });
-          if (resolved.downloadUrl) {
+            url: `https://addons.mozilla.org/firefox/addon/${ext.slug}/`
+          },
+          {
+            type: "crxsoso",
+            browser: "firefox",
+            url: `https://www.crxsoso.com/firefox/detail/${ext.slug}`
+          }
+        );
+      }
+
+      // Firefox UUID → v5
+      if (ext.browser === "firefox" && ext.uuid) {
+        const r = await resolveFirefoxByUUID(ext.uuid);
+        if (r) {
+          links.push(
+            {
+              type: "official",
+              browser: "firefox",
+              url: `https://addons.mozilla.org/firefox/addon/${r.slug}/`
+            },
+            {
+              type: "crxsoso",
+              browser: "firefox",
+              url: `https://www.crxsoso.com/firefox/detail/${r.slug}`
+            }
+          );
+
+          if (r.download) {
             links.push({
               type: "download",
               browser: "firefox",
-              url: resolved.downloadUrl
+              url: r.download
             });
           }
         }
