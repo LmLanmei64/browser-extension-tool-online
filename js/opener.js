@@ -1,23 +1,15 @@
-// opener.js
+// js/opener.js
 
-export function openLinks(extensions, options = {}) {
+export function openLinks(urls, options = {}) {
   const {
     delay = 0,
     confirmOpen = true
   } = options;
 
-  const urls = [];
-
-  extensions.forEach(ext => {
-    (ext.links || []).forEach(link => {
-      urls.push(link.url);
-    });
-  });
-
   if (!urls.length) return;
 
   if (confirmOpen) {
-    const ok = confirm(`Open ${urls.length} links in new tabs?`);
+    const ok = confirm(`将打开 ${urls.length} 个链接，是否继续？`);
     if (!ok) return;
   }
 
