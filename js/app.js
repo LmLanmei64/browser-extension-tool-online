@@ -1,46 +1,62 @@
 import { parseExtensions } from "./parser.js";
-import { attachLinks } from "./links.js";
+import { buildLinksForExtension } from "./links.js";
 import { openLinks } from "./opener.js";
+
+const inputBox = document.getElementById("inputBox");
+const outputBox = document.getElementById("outputBox");
+const parseBtn = document.getElementById("parseBtn");
+const openBtn = document.getElementById("openBtn");
+const fileInput = document.getElementById("fileInput");
 
 let finalData = [];
 
-const inputBox = document.getElementById("inputBox");
-const fileInput = document.getElementById("fileInput");
-const outputBox = document.getElementById("outputBox");
+parseBtn.onclick = async () => {
+  const text = inputBox.value.trim();
+  if (!text) {
+    outputBox.textContent = "[]";
+    return;
+  }
 
-fileInput.addEventListener("change", () => {
-  const f = fileInput.files[0];
-  if (!f) return;
-  const r = new FileReader();
-  r.onload = e => inputBox.value = e.target.result;
-  r.readAsText(f);
-});
+  const parsed = parseExtensions(text);
+  finalData = [];
 
-document.getElementById("parseBtn").onclick = async () => {
-  const parsed = parseExtensions(inputBox.value);
-  finalData = await attachLinks(parsed);
+  for (const ext of parsed) {
+    const links = await buildLinksForExtension(ext);
+    finalData.push({
+      ...ext,
+      availableLinks: links
+    });
+  }
+
   outputBox.textContent = JSON.stringify(finalData, null, 2);
 };
 
-document.getElementById("openBtn").onclick = () => {
-  const urls = collectUrls();
-  if (urls.length) openLinks(urls);
-};
-
-function collectUrls() {
-  const show = {
-    homepage: show_homepage.checked,
-    official: show_official.checked,
-    crxsoso: show_crxsoso.checked
-  };
+openBtn.onclick = () => {
+  const showHomepage = document.getElementById("show_homepage").checked;
+  const showOfficial = document.getElementById("show_official").checked;
+  const showDownload = document.getElementById("show_download").checked;
+  const showCrxsoso = document.getElementById("show_crxsoso").checked;
 
   const urls = [];
-  finalData.forEach(ext => {
-    ext.availableLinks.forEach(l => {
-      if (l.type === "homepage" && show.homepage) urls.push(l.url);
-      if (l.type.startsWith("official") && show.official) urls.push(l.url);
-      if (l.type === "crxsoso" && show.crxsoso) urls.push(l.url);
-    });
-  });
-  return urls;
-}
+
+  for (const ext of finalData) {
+    for (const link of ext.availableLinks) {
+      if (link.type === "homepage" && showHomepage) urls.push(link.url);
+      if (link.type === "official" && showOfficial) urls.push(link.url);
+      if (link.type === "download" && showDownload) urls.push(link.url);
+      if (link.type === "crxsoso" && showCrxsoso) urls.push(link.url);
+    }
+  }
+
+  openLinks(urls);
+};
+
+fileInput.onchange = e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    inputBox.value = reader.result;
+  };
+  reader.readAsText(file);
+};

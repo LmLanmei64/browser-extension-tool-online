@@ -1,63 +1,50 @@
-import { resolveFirefoxAddon } from "./firefox.js";
+import { getFirefoxLinks } from "./firefox.js";
 
-export async function attachLinks(exts) {
-  const out = [];
+export async function buildLinksForExtension(ext) {
+  const links = [];
 
-  for (const ext of exts) {
-    const links = [];
+  const { id, homepageUrl, webStoreUrl, browser } = ext;
 
-    if (ext.homepageUrl) {
-      links.push({ type: "homepage", browser: ext.browser, url: ext.homepageUrl });
-    }
+  /* Homepage */
+  if (homepageUrl) {
+    links.push({ type: "homepage", url: homepageUrl });
+  }
 
-    if (ext.webStoreUrl) {
-      links.push({ type: "official-store", browser: ext.browser, url: ext.webStoreUrl });
-    }
+  /* Official store */
+  if (webStoreUrl) {
+    links.push({ type: "official", url: webStoreUrl });
+  }
 
-    /* Firefox */
-    if (ext.browser === "firefox" && ext.id) {
-      const info = await resolveFirefoxAddon(ext.id);
-      if (info) {
-        links.push({
-          type: "official-store",
-          browser: "firefox",
-          url: `https://addons.mozilla.org/firefox/addon/${info.slug}/`
-        });
-        if (info.downloadUrl) {
-          links.push({
-            type: "official-download",
-            browser: "firefox",
-            url: info.downloadUrl
-          });
-        }
-        links.push({
-          type: "crxsoso",
-          browser: "firefox",
-          url: `https://www.crxsoso.com/firefox/detail/${info.slug}`
-        });
-      }
-    }
-
-    /* Chromium → CRXSoso */
-    if (ext.browser !== "firefox" && ext.id) {
-      links.push({
-        type: "crxsoso",
-        browser: "chrome",
-        url: `https://www.crxsoso.com/webstore/detail/${ext.id}`
-      });
-      links.push({
-        type: "crxsoso",
-        browser: "edge",
-        url: `https://www.crxsoso.com/addon/detail/${ext.id}`
-      });
-    }
-
-    out.push({
-      ...ext,
-      exists: links.length > 0,
-      availableLinks: links
+  /* 🔥 Direct download */
+  if (browser === "chrome" || browser === "edge" || browser === "chromium") {
+    links.push({
+      type: "download",
+      url: buildChromeDownloadUrl(id)
     });
   }
 
-  return out;
+  if (browser === "firefox") {
+    const firefoxLinks = await getFirefoxLinks(id);
+    links.push(...firefoxLinks);
+  }
+
+  /* CRX 搜搜 */
+  if (id && (browser === "chrome" || browser === "edge" || browser === "chromium")) {
+    links.push({
+      type: "crxsoso",
+      url: `https://www.crxsoso.com/webstore/detail/${id}`
+    });
+  }
+
+  return links;
+}
+
+function buildChromeDownloadUrl(id) {
+  return (
+    "https://clients2.google.com/service/update2/crx" +
+    "?response=redirect" +
+    "&prodversion=114.0" +
+    "&acceptformat=crx3" +
+    "&x=id%3D" + id + "%26uc"
+  );
 }

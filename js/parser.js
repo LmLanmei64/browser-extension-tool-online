@@ -1,7 +1,7 @@
 export function parseExtensions(text) {
   text = text.trim();
 
-  /* 1️⃣ JSON（你之前的格式） */
+  /* 1️⃣ JSON 数组 / 对象 */
   if (text.startsWith("[") || text.startsWith("{")) {
     try {
       const data = JSON.parse(text);
@@ -15,7 +15,7 @@ export function parseExtensions(text) {
     return parseMarkdown(text);
   }
 
-  /* 3️⃣ Firefox about:support（桌面 / Android 通吃） */
+  /* 3️⃣ Firefox about:support（桌面 + Android 表格） */
   const firefox = parseFirefoxUUIDs(text);
   if (firefox.length) return firefox;
 
@@ -28,9 +28,9 @@ function normalizeJson(item) {
   return {
     id: item.id || "",
     name: item.name || "",
-    browser: normalizeChannel(item.channel),
     homepageUrl: item.homepageUrl || "",
-    webStoreUrl: item.webStoreUrl || ""
+    webStoreUrl: item.webStoreUrl || "",
+    browser: normalizeChannel(item.channel)
   };
 }
 
@@ -54,7 +54,7 @@ function parseMarkdown(text) {
   });
 }
 
-/* 🔥 关键：Firefox UUID 提取（Android / Desktop 通用） */
+/* 🔥 Firefox UUID 解析（Android / Desktop 通用） */
 function parseFirefoxUUIDs(text) {
   const uuidRegex =
     /\{[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\}/g;
@@ -62,12 +62,11 @@ function parseFirefoxUUIDs(text) {
   const matches = text.match(uuidRegex);
   if (!matches) return [];
 
-  // 去重
   const unique = [...new Set(matches)];
 
   return unique.map(id => ({
     id,
-    name: "",        // about:support Android 通常没法稳定拿到
+    name: "",
     browser: "firefox"
   }));
 }

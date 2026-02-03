@@ -3,49 +3,30 @@ const I18N_MESSAGES = {
     title: "Browser Extension Extractor",
     paste_label: "Paste extension export content:",
     paste_placeholder: "Paste about:support, extensions list, JSON, Markdown…",
-
-    result_title: "Extracted Result",
-
     btn_parse: "Parse Extensions",
     btn_open: "Open Links",
-    btn_open_delay: "Open With Delay",
-
-    delay_label: "Delay between tabs:",
-
     source_title: "Link sources to include:",
+    source_homepage: "Homepage",
     source_official: "Official store",
-    source_crxsoso: "CRX Soso",
-    source_homepage: "Homepage"
+    source_download: "Direct download",
+    source_crxsoso: "CRX Soso"
   },
 
   zh: {
     title: "浏览器扩展提取工具",
     paste_label: "粘贴扩展导出内容：",
     paste_placeholder: "可粘贴 about:support、扩展列表、JSON、Markdown…",
-
-    result_title: "提取结果",
-
     btn_parse: "解析扩展",
     btn_open: "打开链接",
-    btn_open_delay: "延迟打开",
-
-    delay_label: "标签页延迟：",
-
     source_title: "选择要生成的链接来源：",
+    source_homepage: "主页",
     source_official: "官方商店",
-    source_crxsoso: "CRX 搜搜",
-    source_homepage: "插件主页"
+    source_download: "直接下载",
+    source_crxsoso: "CRX 搜搜"
   }
 };
 
 let currentLang = "en";
-
-function setLanguage(lang) {
-  if (I18N_MESSAGES[lang]) {
-    currentLang = lang;
-    applyTranslations();
-  }
-}
 
 function t(key) {
   return I18N_MESSAGES[currentLang][key] || key;
