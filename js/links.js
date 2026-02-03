@@ -1,59 +1,35 @@
-export async function attachLinks(list) {
-  return list.map(ext => {
+export function attachLinks(exts) {
+  return exts.map(ext => {
     const links = [];
 
-    /* ========== Chromium ========== */
-    if (ext.browser === "chromium" && ext.id) {
-      // 官方商店页
-      links.push(
-        {
-          type: "official-page",
-          browser: "chrome",
-          url: `https://chrome.google.com/webstore/detail/${ext.id}`
-        },
-        {
-          type: "official-page",
-          browser: "edge",
-          url: `https://microsoftedge.microsoft.com/addons/detail/${ext.id}`
-        }
-      );
-
-      // CRXSoso（用于检测存在）
-      links.push(
-        {
-          type: "crxsoso-page",
-          browser: "chrome",
-          url: `https://www.crxsoso.com/webstore/detail/${ext.id}`
-        },
-        {
-          type: "crxsoso-page",
-          browser: "edge",
-          url: `https://www.crxsoso.com/addon/detail/${ext.id}`
-        }
-      );
+    if (ext.homepageUrl) {
+      links.push({
+        type: "homepage",
+        browser: ext.browser,
+        url: ext.homepageUrl
+      });
     }
 
-    /* ========== Firefox ========== */
-    if (ext.browser === "firefox" && ext.slug) {
-      links.push(
-        {
-          type: "official-page",
-          browser: "firefox",
-          url: `https://addons.mozilla.org/firefox/addon/${ext.slug}/`
-        },
-        {
-          type: "official-download",
-          browser: "firefox",
-          url: `https://addons.mozilla.org/firefox/downloads/latest/${ext.slug}/addon.xpi`
-        },
-        {
-          type: "crxsoso-page",
-          browser: "firefox",
-          url: `https://www.crxsoso.com/firefox/detail/${ext.slug}`
-        }
-      );
+    if (ext.webStoreUrl) {
+      links.push({
+        type: "official-store",
+        browser: ext.browser,
+        url: ext.webStoreUrl
+      });
     }
 
-    return { ...ext, links };
+    if (ext.id) {
+      links.push({
+        type: "crxsoso",
+        browser: ext.browser,
+        url: `https://www.crxsoso.com/store/detail/${ext.id}`
+      });
+    }
+
+    return {
+      ...ext,
+      exists: links.length > 0,
+      availableLinks: links
+    };
   });
 }
