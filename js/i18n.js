@@ -14,7 +14,8 @@ const I18N_MESSAGES = {
 
     source_title: "Link sources to include:",
     source_official: "Official store",
-    source_crxsoso: "CRX Soso"
+    source_crxsoso: "CRX Soso",
+    source_homepage: "Homepage"
   },
 
   zh: {
@@ -32,7 +33,8 @@ const I18N_MESSAGES = {
 
     source_title: "选择要生成的链接来源：",
     source_official: "官方商店",
-    source_crxsoso: "CRX 搜搜"
+    source_crxsoso: "CRX 搜搜",
+    source_homepage: "插件主页"
   }
 };
 
