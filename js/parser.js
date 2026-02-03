@@ -1,28 +1,34 @@
+// js/parser.js
+
 export function parseExtensions(text) {
   text = text.trim();
+  if (!text) return [];
 
-  /* 1️⃣ JSON 数组 / 对象 */
-  if (text.startsWith("[") || text.startsWith("{")) {
-    try {
-      const data = JSON.parse(text);
-      const arr = Array.isArray(data) ? data : [data];
-      return arr.map(normalizeJson);
-    } catch {}
-  }
+  const results = [];
 
-  /* 2️⃣ Markdown（## + key: value） */
-  if (text.includes("\n## ")) {
-    return parseMarkdown(text);
-  }
+  /* 1️⃣ JSON（数组 / 单对象，混在文本里也没关系） */
+  results.push(...parseJsonLoose(text));
 
-  /* 3️⃣ Firefox about:support（桌面 + Android 表格） */
-  const firefox = parseFirefoxUUIDs(text);
-  if (firefox.length) return firefox;
+  /* 2️⃣ Markdown（## block） */
+  results.push(...parseMarkdownLoose(text));
 
-  return [];
+  /* 3️⃣ Firefox about:support（桌面 + Android，UUID 扫描） */
+  results.push(...parseFirefoxUUIDs(text));
+
+  /* 4️⃣ 合并 + 去重 */
+  return dedupe(results);
 }
 
-/* ---------- helpers ---------- */
+/* ---------- JSON（宽松） ---------- */
+function parseJsonLoose(text) {
+  try {
+    const data = JSON.parse(text);
+    const arr = Array.isArray(data) ? data : [data];
+    return arr.map(normalizeJson);
+  } catch {
+    return [];
+  }
+}
 
 function normalizeJson(item) {
   return {
@@ -34,7 +40,10 @@ function normalizeJson(item) {
   };
 }
 
-function parseMarkdown(text) {
+/* ---------- Markdown ---------- */
+function parseMarkdownLoose(text) {
+  if (!text.includes("\n## ")) return [];
+
   const blocks = text.split("\n## ").slice(1);
   return blocks.map(b => {
     const lines = b.split("\n");
@@ -51,10 +60,10 @@ function parseMarkdown(text) {
       if (k === "channel") obj.browser = normalizeChannel(v);
     });
     return obj;
-  });
+  }).filter(x => x.id);
 }
 
-/* 🔥 Firefox UUID 解析（Android / Desktop 通用） */
+/* ---------- Firefox UUID（最稳） ---------- */
 function parseFirefoxUUIDs(text) {
   const uuidRegex =
     /\{[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\}/g;
@@ -69,6 +78,33 @@ function parseFirefoxUUIDs(text) {
     name: "",
     browser: "firefox"
   }));
+}
+
+/* ---------- 去重（核心） ---------- */
+function dedupe(items) {
+  const map = new Map();
+
+  for (const item of items) {
+    if (!item.id || !item.browser) continue;
+
+    const key = `${item.browser}:${item.id}`;
+
+    if (!map.has(key)) {
+      map.set(key, item);
+    } else {
+      // 合并信息（已有的不覆盖）
+      const existing = map.get(key);
+      map.set(key, {
+        ...existing,
+        ...item,
+        name: existing.name || item.name,
+        homepageUrl: existing.homepageUrl || item.homepageUrl,
+        webStoreUrl: existing.webStoreUrl || item.webStoreUrl
+      });
+    }
+  }
+
+  return [...map.values()];
 }
 
 function normalizeChannel(channel = "") {
