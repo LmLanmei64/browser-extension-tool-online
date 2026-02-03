@@ -47,7 +47,7 @@ openBtn.onclick = () => {
       if (link.type === "crxsoso" && showCrxsoso) urls.push(link.url);
     }
   }
-
+  console.log(urls);
   openLinks(urls);
 };
 
