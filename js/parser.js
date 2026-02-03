@@ -1,54 +1,69 @@
 export function parseExtensions(text) {
   text = text.trim();
 
-  // JSON 输入
+  // JSON
   if (text.startsWith("[") || text.startsWith("{")) {
     try {
       const data = JSON.parse(text);
-      return data.map(item => ({
-        id: item.id || "",
-        name: item.name || "",
-        browser: normalizeChannel(item.channel),
-        homepageUrl: item.homepageUrl || "",
-        webStoreUrl: item.webStoreUrl || ""
-      }));
-    } catch {
-      // 继续走Markdown或表格解析
-    }
+      const arr = Array.isArray(data) ? data : [data];
+      return arr.map(normalizeJson);
+    } catch {}
   }
 
-  // Markdown 解析
-  if (text.startsWith("##")) {
+  // Markdown（## + key: value）
+  if (text.includes("\n## ")) {
     return parseMarkdown(text);
   }
 
-  // 解析 about:support 表格（待扩展）
+  // about:support（Firefox）
+  if (text.includes("extensions.json")) {
+    return parseAboutSupport(text);
+  }
+
   return [];
 }
 
-// Markdown 格式解析
+function normalizeJson(item) {
+  return {
+    id: item.id || "",
+    name: item.name || "",
+    browser: normalizeChannel(item.channel),
+    homepageUrl: item.homepageUrl || "",
+    webStoreUrl: item.webStoreUrl || ""
+  };
+}
+
 function parseMarkdown(text) {
-  const lines = text.split("\n");
-  const extensions = [];
-  let current = {};
-
-  lines.forEach(line => {
-    if (line.startsWith("##")) {
-      if (current.name) extensions.push(current);
-      current = { name: line.replace("##", "").trim() };
-    } else if (line.startsWith("id:")) {
-      current.id = line.replace("id:", "").trim();
-    } else if (line.startsWith("homepage:")) {
-      current.homepageUrl = line.replace("homepage:", "").trim();
-    } else if (line.startsWith("url:")) {
-      current.webStoreUrl = line.replace("url:", "").trim();
-    } else if (line.startsWith("channel:")) {
-      current.browser = normalizeChannel(line.replace("channel:", "").trim());
-    }
+  const blocks = text.split("\n## ").slice(1);
+  return blocks.map(b => {
+    const lines = b.split("\n");
+    const obj = {};
+    lines.forEach(l => {
+      const m = l.match(/^(\w+):\s*(.*)$/);
+      if (!m) return;
+      const k = m[1];
+      const v = m[2].trim();
+      if (k === "id") obj.id = v;
+      if (k === "name") obj.name = v;
+      if (k === "homepage") obj.homepageUrl = v;
+      if (k === "url") obj.webStoreUrl = v;
+      if (k === "channel") obj.browser = normalizeChannel(v);
+    });
+    return obj;
   });
+}
 
-  if (current.name) extensions.push(current);
-  return extensions;
+function parseAboutSupport(text) {
+  try {
+    const json = JSON.parse(text);
+    return json.addons.map(a => ({
+      id: a.id,               // UUID
+      name: a.name,
+      browser: "firefox"
+    }));
+  } catch {
+    return [];
+  }
 }
 
 function normalizeChannel(channel = "") {
