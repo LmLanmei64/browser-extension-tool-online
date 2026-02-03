@@ -8,8 +8,10 @@ const I18N_MESSAGES = {
     source_title: "Link sources to include:",
     source_homepage: "Homepage",
     source_official: "Official store",
-    source_download: "Direct download (Firefox Only)",
-    source_crxsoso: "CRX Soso"
+    source_download: "Direct download (Firefox only)",
+    source_crxsoso: "CRX Soso",
+    source_firefox_page: "Firefox Plugin Page",
+    source_firefox_download: "Firefox Direct Download"
   },
 
   zh: {
@@ -21,8 +23,10 @@ const I18N_MESSAGES = {
     source_title: "选择要生成的链接来源：",
     source_homepage: "主页",
     source_official: "官方商店",
-    source_download: "直接下载（仅Firefox）",
-    source_crxsoso: "CRX 搜搜"
+    source_download: "直接下载（仅 Firefox）",
+    source_crxsoso: "CRX 搜搜",
+    source_firefox_page: "Firefox 插件页",
+    source_firefox_download: "Firefox 直接下载"
   }
 };
 

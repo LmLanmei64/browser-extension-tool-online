@@ -11,39 +11,11 @@
       max-width: 960px;
       margin: 16px auto;
       padding: 0 12px;
-      line-height: 1.5;
     }
-    h1 {
-      font-size: 1.6rem;
-      margin-bottom: 12px;
-    }
-    textarea {
-      width: 100%;
-      height: 220px;
-      box-sizing: border-box;
-      font-size: 14px;
-    }
+    textarea { width: 100%; height: 220px; }
     .section { margin: 16px 0; }
-    button {
-      padding: 6px 14px;
-      font-size: 14px;
-      margin-right: 8px;
-    }
-    .checkbox-group label {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      margin-right: 16px;
-      font-size: 14px;
-      cursor: pointer;
-    }
-    pre {
-      background: #f6f8fa;
-      padding: 10px;
-      font-size: 13px;
-      overflow: auto;
-      max-height: 400px;
-    }
+    .group { margin-top: 8px; }
+    label { margin-right: 16px; }
   </style>
 </head>
 
@@ -52,15 +24,7 @@
 <h1 data-i18n="title"></h1>
 
 <div class="section">
-  <label data-i18n="paste_label"></label>
-  <textarea
-    id="inputBox"
-    data-i18n-placeholder="paste_placeholder"
-    placeholder="Paste here..."></textarea>
-
-  <div style="margin-top:6px">
-    <input type="file" id="fileInput">
-  </div>
+  <textarea id="inputBox" data-i18n-placeholder="paste_placeholder"></textarea>
 </div>
 
 <div class="section">
@@ -69,40 +33,28 @@
 </div>
 
 <div class="section">
-  <strong data-i18n="source_title"></strong>
-
-  <div class="checkbox-group" style="margin-top:8px">
-    <label>
-      <input type="checkbox" id="show_homepage" checked>
-      <span data-i18n="source_homepage">Homepage</span>
-    </label>
-
-    <label>
-      <input type="checkbox" id="show_official" checked>
-      <span data-i18n="source_official"></span>
-    </label>
-
-    <label>
-      <input type="checkbox" id="show_download" checked>
-      <span data-i18n="source_download"></span>
-    </label>
-
-    <label>
-      <input type="checkbox" id="show_crxsoso">
-      <span data-i18n="source_crxsoso"></span>
-    </label>
+  <strong>Chrome / Edge</strong>
+  <div class="group">
+    <label><input type="checkbox" id="show_chrome_official" checked> Chrome 官方页</label>
+    <label><input type="checkbox" id="show_edge_official" checked> Edge 官方页</label>
+    <label><input type="checkbox" id="show_crxsoso_chrome"> CRXSoso</label>
   </div>
 </div>
 
 <div class="section">
-  <pre id="outputBox"></pre>
+  <strong>Firefox（单选）</strong>
+  <div class="group">
+    <label><input type="radio" name="firefox_source" value="official" checked> 官方页面</label>
+    <label><input type="radio" name="firefox_source" value="download"> 直接下载 (.xpi)</label>
+    <label><input type="radio" name="firefox_source" value="crxsoso"> CRXSoso</label>
+  </div>
 </div>
+
+<pre id="outputBox"></pre>
 
 <script src="js/i18n.js"></script>
 <script type="module" src="js/app.js"></script>
-<script>
-  initI18n();
-</script>
+<script>initI18n();</script>
 
 </body>
 </html>

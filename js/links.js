@@ -2,32 +2,45 @@ import { getFirefoxLinks } from "./firefox.js";
 
 export async function buildLinksForExtension(ext) {
   const links = [];
+  const { id, browser, webStoreUrl } = ext;
 
-  const { id, homepageUrl, webStoreUrl, browser } = ext;
-
-  /* Homepage */
-  if (homepageUrl) {
-    links.push({ type: "homepage", url: homepageUrl });
-  }
-
-  /* Official store */
+  /* 官方页面 */
   if (webStoreUrl) {
     links.push({ type: "official", url: webStoreUrl });
   }
 
+  /* Firefox */
   if (browser === "firefox") {
-    const firefoxLinks = await getFirefoxLinks(id);
-    links.push(...firefoxLinks);
+    const fxLinks = await getFirefoxLinks(id);
+    links.push(...fxLinks);
+
+    // Firefox CRXSoso（⚠️ 仅当有 slug）
+    const slug = fxLinks.find(l => l.type === "official")?.url
+      ?.split("/addon/")[1]
+      ?.replace("/", "");
+
+    if (slug) {
+      links.push({
+        type: "crxsoso",
+        url: `https://www.crxsoso.com/firefox/detail/${slug}`
+      });
+    }
   }
 
-  /* CRX 搜搜 */
-  if (id && (browser === "chrome" || browser === "edge" || browser === "chromium")) {
+  /* Chrome / Edge CRXSoso */
+  if (browser === "chrome") {
     links.push({
       type: "crxsoso",
       url: `https://www.crxsoso.com/webstore/detail/${id}`
     });
   }
 
+  if (browser === "edge") {
+    links.push({
+      type: "crxsoso",
+      url: `https://www.crxsoso.com/addon/detail/${id}`
+    });
+  }
+
   return links;
 }
-
