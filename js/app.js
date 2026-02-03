@@ -8,25 +8,16 @@ const inputBox = document.getElementById("inputBox");
 const fileInput = document.getElementById("fileInput");
 const outputBox = document.getElementById("outputBox");
 
-/* =========================
-   文件导入
-========================= */
-
+/* 文件导入 */
 fileInput.addEventListener("change", () => {
   const file = fileInput.files[0];
   if (!file) return;
-
   const reader = new FileReader();
-  reader.onload = e => {
-    inputBox.value = e.target.result;
-  };
+  reader.onload = e => inputBox.value = e.target.result;
   reader.readAsText(file);
 });
 
-/* =========================
-   解析
-========================= */
-
+/* 解析 */
 document.getElementById("parseBtn").onclick = async () => {
   const parsed = parseExtensions(inputBox.value);
   if (!parsed.length) {
@@ -36,16 +27,12 @@ document.getElementById("parseBtn").onclick = async () => {
 
   finalData = await attachLinks(parsed);
 
-  // ✅ 修正后的存在性检测
   await detectExistence(finalData);
 
   outputBox.textContent = JSON.stringify(finalData, null, 2);
 };
 
-/* =========================
-   打开链接
-========================= */
-
+/* 打开链接 */
 document.getElementById("openBtn").onclick = () => {
   const urls = collectUrls();
   if (!urls) return;
@@ -53,79 +40,36 @@ document.getElementById("openBtn").onclick = () => {
 };
 
 /* =========================
-   存在性检测（修正版）
+   存在性检测（改进版）
 ========================= */
 
 async function detectExistence(data) {
   for (const ext of data) {
-    ext.existence = {
-      edge: { official: false, crxsoso: false },
-      chrome: { official: false, crxsoso: false },
-      firefox: { official: false, crxsoso: false }
-    };
+    ext.existence = {};
+    ext.availableLinks = [];
 
     const links = ext.links || [];
 
-    /* ===== Chromium：Edge 优先 ===== */
-    if (ext.browser === "chromium") {
-      // 1️⃣ Edge 官方
-      const edgeOfficial = links.find(
-        l => l.browser === "edge" && l.type === "official-page"
-      );
+    for (const link of links) {
+      const result = await weakExistsSafe(link.url);
 
-      if (edgeOfficial && await weakExists(edgeOfficial.url)) {
-        ext.existence.edge.official = true;
-        // ⚠️ Edge 存在 → 不再判断 Chrome
-      } else {
-        // 2️⃣ Chrome 官方（仅当 Edge 不存在）
-        const chromeOfficial = links.find(
-          l => l.browser === "chrome" && l.type === "official-page"
-        );
-
-        if (chromeOfficial && await weakExists(chromeOfficial.url)) {
-          ext.existence.chrome.official = true;
-        }
-      }
-
-      // 3️⃣ CRXSoso（兜底）
-      for (const browser of ["edge", "chrome"]) {
-        const crx = links.find(
-          l => l.browser === browser && l.type === "crxsoso"
-        );
-        if (crx && await weakExists(crx.url)) {
-          ext.existence[browser].crxsoso = true;
-        }
-      }
-    }
-
-    /* ===== Firefox：官方 → CRXSoso ===== */
-    if (ext.browser === "firefox") {
-      const official = links.find(
-        l => l.browser === "firefox" && l.type === "official-page"
-      );
-
-      if (official && await weakExists(official.url)) {
-        ext.existence.firefox.official = true;
-      } else {
-        const crx = links.find(
-          l => l.browser === "firefox" && l.type === "crxsoso"
-        );
-        if (crx && await weakExists(crx.url)) {
-          ext.existence.firefox.crxsoso = true;
-        }
+      if (result === true) {
+        ext.availableLinks.push(link);
+        if (!ext.existence[link.browser]) ext.existence[link.browser] = {};
+        ext.existence[link.browser][link.type] = true;
       }
     }
   }
 }
 
-/* =========================
-   弱检测（前端极限）
-========================= */
-
-function weakExists(url) {
-  return fetch(url, { mode: "no-cors" })
-    .then(() => true)
-    .catch(() => false);
+/* 更安全的弱检测 */
+async function weakExistsSafe(url) {
+  try {
+    await fetch(url, { mode: "no-cors" });
+    return true;
+  } catch {
+    return "unknown"; // 不再当 false
+  }
 }
 
 /* =========================
@@ -148,7 +92,6 @@ function collectUrls() {
     alert("请至少选择一个浏览器");
     return null;
   }
-
   if (!Object.values(sources).some(Boolean)) {
     alert("请至少选择一个来源");
     return null;
@@ -157,31 +100,19 @@ function collectUrls() {
   const urls = [];
 
   finalData.forEach(ext => {
-    const ex = ext.existence || {};
-    const links = ext.links || [];
+    (ext.availableLinks || []).forEach(link => {
+      if (!browsers[link.browser]) return;
 
-    for (const browser of Object.keys(browsers)) {
-      if (!browsers[browser]) continue;
+      if (sources.official && link.type.startsWith("official"))
+        urls.push(link.url);
 
-      if (sources.official && ex[browser]?.official) {
-        const official = links.find(
-          l => l.browser === browser && l.type === "official-page"
-        );
-        if (official) urls.push(official.url);
-        continue;
-      }
-
-      if (sources.crxsoso && ex[browser]?.crxsoso) {
-        const crx = links.find(
-          l => l.browser === browser && l.type === "crxsoso"
-        );
-        if (crx) urls.push(crx.url);
-      }
-    }
+      if (sources.crxsoso && link.type === "crxsoso")
+        urls.push(link.url);
+    });
   });
 
   if (!urls.length) {
-    alert("没有符合当前条件的链接");
+    alert("没有检测到存在的链接");
     return null;
   }
 
