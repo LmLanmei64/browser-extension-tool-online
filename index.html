@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>浏览器扩展解析工具</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body { font-family: system-ui, sans-serif; max-width: 960px; margin: 20px auto; }
     textarea { width: 100%; font-family: monospace; }
     fieldset { margin-top: 12px; padding: 8px; }
     label { display: block; margin: 4px 0; }
-    button { margin-top: 10px; margin-right: 10px; }
+    button { margin-top: 10px; }
     pre { background: #f5f5f5; padding: 10px; }
   </style>
 </head>
@@ -17,32 +17,26 @@
 
 <h1>浏览器扩展解析工具</h1>
 
-<textarea id="inputBox" rows="10"
-  placeholder="粘贴 about:support、扩展 ID 或文本"></textarea>
-<input type="file" id="fileInput">
+<textarea id="inputBox" rows="10" placeholder="粘贴插件 JSON"></textarea>
+<input type="file" id="fileInput" />
 
 <fieldset>
   <legend>浏览器</legend>
   <label><input type="checkbox" id="browser_edge" checked> Edge</label>
   <label><input type="checkbox" id="browser_chrome" checked> Chrome</label>
-  <label><input type="checkbox" id="browser_firefox" checked> Firefox</label>
+  <label><input type="checkbox" id="browser_firefox" checked> Firefox</label> <!-- 添加 Firefox -->
 </fieldset>
 
 <fieldset>
   <legend>来源</legend>
   <label><input type="checkbox" id="source_official" checked> 官方商店</label>
-  <label><input type="checkbox" id="source_crxsoso"> CRXSoso</label>
+  <label><input type="checkbox" id="source_crxsoso" checked> CRXSoso</label>
 </fieldset>
 
 <fieldset>
-  <legend>官方链接类型</legend>
   <label>
-    <input type="radio" name="official_mode" value="download" checked>
-    下载链接（默认）
-  </label>
-  <label>
-    <input type="radio" name="official_mode" value="page">
-    插件页面
+    <input type="checkbox" id="detect_other_store" checked>
+    检测另一商店（官方 → CRXSoso → 判定）
   </label>
 </fieldset>
 

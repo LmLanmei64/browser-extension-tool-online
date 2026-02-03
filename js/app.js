@@ -24,7 +24,12 @@ document.getElementById("parseBtn").onclick = async () => {
     outputBox.textContent = "未识别到任何扩展";
     return;
   }
+
   finalData = await attachLinks(parsed);
+
+  // 新增：存在性检测
+  await detectChromiumExistence(finalData);
+
   outputBox.textContent = JSON.stringify(finalData, null, 2);
 };
 
@@ -33,6 +38,47 @@ document.getElementById("openBtn").onclick = () => {
   if (!urls) return;
   openLinks(urls);
 };
+
+/* =========================
+   用户选择逻辑（核心）
+========================= */
+
+// 存在性检测：判断是否在官方商店或 CRXSoso 存在
+async function detectChromiumExistence(data) {
+  for (const ext of data) {
+    if (!ext.links) continue;
+
+    ext.existence = { chrome: {}, edge: {}, firefox: {} };
+
+    // 检测每个浏览器的官方商店 + CRXSoso
+    for (const browser of ["chrome", "edge", "firefox"]) {
+      const official = ext.links.find(
+        l => l.browser === browser && l.type === "official-page"
+      );
+      const crxsoso = ext.links.find(
+        l => l.browser === browser && l.type === "crxsoso"
+      );
+
+      if (official) {
+        const ok = await weakExists(official.url);
+        ext.existence[browser].official = ok;
+        if (ok) continue;
+      }
+
+      if (crxsoso) {
+        const ok = await weakExists(crxsoso.url);
+        ext.existence[browser].crxsoso = ok;
+      }
+    }
+  }
+}
+
+// 弱检测函数（跨域请求）
+function weakExists(url) {
+  return fetch(url, { mode: "no-cors" })
+    .then(() => true)
+    .catch(() => false);
+}
 
 function collectUrls() {
   const browsers = {
@@ -50,6 +96,7 @@ function collectUrls() {
     alert("请至少选择一个浏览器");
     return null;
   }
+
   if (!Object.values(sources).some(Boolean)) {
     alert("请至少选择一个来源");
     return null;
