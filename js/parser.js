@@ -6,7 +6,7 @@ export function parseExtensions(text) {
 
   const results = [];
 
-  /* 1️⃣ JSON（数组 / 单对象，混在文本里也没关系） */
+  /* 1️⃣ JSON（宽松） */
   results.push(...parseJsonLoose(text));
 
   /* 2️⃣ Markdown（## block） */
@@ -21,13 +21,20 @@ export function parseExtensions(text) {
 
 /* ---------- JSON（宽松） ---------- */
 function parseJsonLoose(text) {
-  try {
-    const data = JSON.parse(text);
-    const arr = Array.isArray(data) ? data : [data];
-    return arr.map(normalizeJson);
-  } catch {
-    return [];
+  const blocks = extractJsonBlocks(text);
+  const results = [];
+
+  for (const block of blocks) {
+    try {
+      const data = JSON.parse(block);
+      const arr = Array.isArray(data) ? data : [data];
+      results.push(...arr.map(normalizeJson));
+    } catch {
+      // 单个 JSON 块失败，不影响其它
+    }
   }
+
+  return results.filter(x => x.id);
 }
 
 function normalizeJson(item) {
@@ -113,4 +120,30 @@ function normalizeChannel(channel = "") {
   if (c.includes("chrome")) return "chrome";
   if (c.includes("firefox")) return "firefox";
   return "chromium";
+}
+
+/* ---------- 提取 JSON 块 ---------- */
+function extractJsonBlocks(text) {
+  const blocks = [];
+  const stack = [];
+  let start = -1;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+
+    if (ch === "{" || ch === "[") {
+      if (stack.length === 0) start = i;
+      stack.push(ch);
+    }
+
+    if (ch === "}" || ch === "]") {
+      stack.pop();
+      if (stack.length === 0 && start !== -1) {
+        blocks.push(text.slice(start, i + 1));
+        start = -1;
+      }
+    }
+  }
+
+  return blocks;
 }
