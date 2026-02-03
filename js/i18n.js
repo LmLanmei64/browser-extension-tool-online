@@ -8,7 +8,7 @@ const I18N_MESSAGES = {
     source_title: "Link sources to include:",
     source_homepage: "Homepage",
     source_official: "Official store",
-    source_download: "Direct download",
+    source_download: "Direct download (Firefox Only)",
     source_crxsoso: "CRX Soso"
   },
 
@@ -21,7 +21,7 @@ const I18N_MESSAGES = {
     source_title: "选择要生成的链接来源：",
     source_homepage: "主页",
     source_official: "官方商店",
-    source_download: "直接下载",
+    source_download: "直接下载（仅Firefox）",
     source_crxsoso: "CRX 搜搜"
   }
 };
