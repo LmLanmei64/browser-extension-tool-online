@@ -2,7 +2,6 @@
 
 export function openLinks(urls, options = {}) {
   const {
-    delay = 0,
     confirmOpen = true
   } = options;
 
@@ -13,11 +12,17 @@ export function openLinks(urls, options = {}) {
     if (!ok) return;
   }
 
-  urls.forEach((url, index) => {
-    if (delay > 0) {
-      setTimeout(() => window.open(url, "_blank"), index * delay);
-    } else {
-      window.open(url, "_blank");
-    }
+  // ✅ 关键：同步创建窗口
+  const tabs = urls.map(() => window.open("about:blank", "_blank"));
+
+  // 如果被浏览器拦截
+  if (tabs.some(t => !t)) {
+    alert("浏览器拦截了弹窗，请允许弹窗后再试");
+    return;
+  }
+
+  // 再填充真实 URL
+  urls.forEach((url, i) => {
+    tabs[i].location.href = url;
   });
 }
