@@ -6,12 +6,20 @@ const inputBox = document.getElementById("inputBox");
 const outputBox = document.getElementById("outputBox");
 const fileInput = document.getElementById("fileInput");
 
+/**
+ * 🔑 真正的输入源
+ * - 粘贴
+ * - 文件导入
+ * 最终都写到这里
+ */
+let inputText = "";
 let finalData = [];
 
 /* ---------- 解析 ---------- */
 document.getElementById("parseBtn").onclick = async () => {
   finalData = [];
-  const text = inputBox.value.trim();
+
+  const text = inputText.trim();
   if (!text) {
     outputBox.textContent = "[]";
     return;
@@ -64,15 +72,26 @@ document.getElementById("openBtn").onclick = () => {
   openLinks(urls, { delay: 200, confirmOpen: true });
 };
 
-/* ---------- 文件导入（关键恢复点） ---------- */
+/* ---------- textarea 粘贴 / 输入 ---------- */
+inputBox.addEventListener("input", () => {
+  inputText = inputBox.value;
+});
+
+/* ---------- 文件导入（关键修复点） ---------- */
 fileInput.onchange = e => {
   const file = e.target.files[0];
   if (!file) return;
 
   const reader = new FileReader();
+
   reader.onload = () => {
-    inputBox.value = reader.result;
+    // 1️⃣ 写入“真实输入源”
+    inputText = reader.result || "";
+
+    // 2️⃣ 是否显示在 textarea（推荐显示，方便调试）
+    inputBox.value = inputText;
   };
+
   reader.readAsText(file);
 };
 
