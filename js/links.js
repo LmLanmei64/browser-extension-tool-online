@@ -1,84 +1,59 @@
-async function resolveFirefoxByUUID(uuid) {
-  const url =
-    `https://addons.mozilla.org/api/v5/addons/addon/${encodeURIComponent(uuid)}/`;
-
-  const res = await fetch(url);
-  if (!res.ok) return null;
-
-  const data = await res.json();
-  return {
-    slug: data.slug,
-    download: data.current_version?.file?.url
-  };
-}
-
 export async function attachLinks(list) {
-  return Promise.all(
-    list.map(async ext => {
-      const links = [];
+  return list.map(ext => {
+    const links = [];
 
-      // Chromium → Chrome + Edge
-      if (ext.browser === "chromium" && ext.id) {
-        links.push(
-          {
-            type: "official-page",
-            browser: "chrome",
-            url: `https://chrome.google.com/webstore/detail/${ext.id}`
-          },
-          {
-            type: "official-page",
-            browser: "edge",
-            url: `https://microsoftedge.microsoft.com/addons/detail/${ext.id}`
-          },
-          {
-            type: "crxsoso",
-            browser: "chrome",
-            url: `https://www.crxsoso.com/webstore/detail/${ext.id}`
-          },
-          {
-            type: "crxsoso",
-            browser: "edge",
-            url: `https://www.crxsoso.com/addon/detail/${ext.id}`
-          }
-        );
-      }
-
-      // Firefox（slug 或 uuid）
-      if (ext.browser === "firefox") {
-        let slug = ext.slug;
-        let download = null;
-
-        if (ext.uuid) {
-          const r = await resolveFirefoxByUUID(ext.uuid);
-          if (r) {
-            slug = r.slug;
-            download = r.download;
-          }
+    /* ========== Chromium ========== */
+    if (ext.browser === "chromium" && ext.id) {
+      // 官方商店页
+      links.push(
+        {
+          type: "official-page",
+          browser: "chrome",
+          url: `https://chrome.google.com/webstore/detail/${ext.id}`
+        },
+        {
+          type: "official-page",
+          browser: "edge",
+          url: `https://microsoftedge.microsoft.com/addons/detail/${ext.id}`
         }
+      );
 
-        if (slug) {
-          links.push({
-            type: "official-page",
-            browser: "firefox",
-            url: `https://addons.mozilla.org/firefox/addon/${slug}/`
-          });
-          links.push({
-            type: "crxsoso",
-            browser: "firefox",
-            url: `https://www.crxsoso.com/firefox/detail/${slug}`
-          });
+      // CRXSoso（用于检测存在）
+      links.push(
+        {
+          type: "crxsoso-page",
+          browser: "chrome",
+          url: `https://www.crxsoso.com/webstore/detail/${ext.id}`
+        },
+        {
+          type: "crxsoso-page",
+          browser: "edge",
+          url: `https://www.crxsoso.com/addon/detail/${ext.id}`
         }
+      );
+    }
 
-        if (download) {
-          links.push({
-            type: "official-download",
-            browser: "firefox",
-            url: download
-          });
+    /* ========== Firefox ========== */
+    if (ext.browser === "firefox" && ext.slug) {
+      links.push(
+        {
+          type: "official-page",
+          browser: "firefox",
+          url: `https://addons.mozilla.org/firefox/addon/${ext.slug}/`
+        },
+        {
+          type: "official-download",
+          browser: "firefox",
+          url: `https://addons.mozilla.org/firefox/downloads/latest/${ext.slug}/addon.xpi`
+        },
+        {
+          type: "crxsoso-page",
+          browser: "firefox",
+          url: `https://www.crxsoso.com/firefox/detail/${ext.slug}`
         }
-      }
+      );
+    }
 
-      return { ...ext, links };
-    })
-  );
+    return { ...ext, links };
+  });
 }
