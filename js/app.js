@@ -8,9 +8,13 @@ const inputBox = document.getElementById("inputBox");
 const fileInput = document.getElementById("fileInput");
 const outputBox = document.getElementById("outputBox");
 
+/* =========================
+   文件导入
+========================= */
 fileInput.addEventListener("change", () => {
   const file = fileInput.files[0];
   if (!file) return;
+
   const reader = new FileReader();
   reader.onload = e => {
     inputBox.value = e.target.result;
@@ -18,6 +22,9 @@ fileInput.addEventListener("change", () => {
   reader.readAsText(file);
 });
 
+/* =========================
+   解析
+========================= */
 document.getElementById("parseBtn").onclick = async () => {
   const parsed = parseExtensions(inputBox.value);
   if (!parsed.length) {
@@ -27,12 +34,15 @@ document.getElementById("parseBtn").onclick = async () => {
 
   finalData = await attachLinks(parsed);
 
-  // 新增：存在性检测
-  await detectChromiumExistence(finalData);
+  // ⭐ 新存在性判定逻辑
+  await detectExistence(finalData);
 
   outputBox.textContent = JSON.stringify(finalData, null, 2);
 };
 
+/* =========================
+   打开链接
+========================= */
 document.getElementById("openBtn").onclick = () => {
   const urls = collectUrls();
   if (!urls) return;
@@ -40,46 +50,74 @@ document.getElementById("openBtn").onclick = () => {
 };
 
 /* =========================
-   用户选择逻辑（核心）
+   Chromium + Firefox 存在性检测（最终版）
 ========================= */
-
-// 存在性检测：判断是否在官方商店或 CRXSoso 存在
-async function detectChromiumExistence(data) {
+async function detectExistence(data) {
   for (const ext of data) {
-    if (!ext.links) continue;
+    ext.existence = {
+      chromium: {
+        edge: false,
+        crxsoso: false
+      },
+      firefox: {
+        official: false,
+        crxsoso: false
+      }
+    };
 
-    ext.existence = { chrome: {}, edge: {}, firefox: {} };
+    const links = ext.links || [];
 
-    // 检测每个浏览器的官方商店 + CRXSoso
-    for (const browser of ["chrome", "edge", "firefox"]) {
-      const official = ext.links.find(
-        l => l.browser === browser && l.type === "official-page"
+    /* ===== Chromium 插件 ===== */
+    if (ext.browser === "chromium") {
+      // 1️⃣ Edge 官方作为唯一官方依据
+      const edge = links.find(
+        l => l.browser === "edge" && l.type === "official-page"
       );
-      const crxsoso = ext.links.find(
-        l => l.browser === browser && l.type === "crxsoso"
-      );
 
-      if (official) {
-        const ok = await weakExists(official.url);
-        ext.existence[browser].official = ok;
-        if (ok) continue;
+      if (edge && await weakExists(edge.url)) {
+        ext.existence.chromium.edge = true;
+        continue; // Edge 存在就不用再判断
       }
 
-      if (crxsoso) {
-        const ok = await weakExists(crxsoso.url);
-        ext.existence[browser].crxsoso = ok;
+      // 2️⃣ CRXSoso 兜底
+      const crx = links.find(l => l.type === "crxsoso");
+      if (crx && await weakExists(crx.url)) {
+        ext.existence.chromium.crxsoso = true;
+      }
+    }
+
+    /* ===== Firefox 插件 ===== */
+    if (ext.browser === "firefox") {
+      const official = links.find(
+        l => l.browser === "firefox" && l.type === "official-page"
+      );
+
+      if (official && await weakExists(official.url)) {
+        ext.existence.firefox.official = true;
+      } else {
+        const crx = links.find(
+          l => l.browser === "firefox" && l.type === "crxsoso"
+        );
+        if (crx && await weakExists(crx.url)) {
+          ext.existence.firefox.crxsoso = true;
+        }
       }
     }
   }
 }
 
-// 弱检测函数（跨域请求）
+/* =========================
+   弱存在检测（前端极限）
+========================= */
 function weakExists(url) {
   return fetch(url, { mode: "no-cors" })
     .then(() => true)
     .catch(() => false);
 }
 
+/* =========================
+   根据用户选择收集要打开的链接
+========================= */
 function collectUrls() {
   const browsers = {
     edge: browser_edge.checked,
@@ -102,31 +140,52 @@ function collectUrls() {
     return null;
   }
 
-  const officialMode =
-    document.querySelector('input[name="official_mode"]:checked')?.value
-    || "download";
-
   const urls = [];
 
   finalData.forEach(ext => {
+    const ex = ext.existence || {};
     const links = ext.links || [];
 
-    if (sources.official) {
-      const chosen = links.find(l =>
-        browsers[l.browser] &&
-        (officialMode === "download"
-          ? l.type === "official-download"
-          : l.type === "official-page")
-      );
-      if (chosen) urls.push(chosen.url);
+    /* ===== Chromium ===== */
+    if (ext.browser === "chromium") {
+      const exists = ex.chromium?.edge || ex.chromium?.crxsoso;
+      if (!exists) return;
+
+      for (const browser of ["edge", "chrome"]) {
+        if (!browsers[browser]) continue;
+
+        if (sources.official && ex.chromium.edge) {
+          const official = links.find(
+            l => l.browser === browser && l.type === "official-page"
+          );
+          if (official) urls.push(official.url);
+          continue;
+        }
+
+        if (sources.crxsoso && ex.chromium.crxsoso) {
+          const crx = links.find(l => l.type === "crxsoso");
+          if (crx) urls.push(crx.url);
+        }
+      }
     }
 
-    if (sources.crxsoso) {
-      links.forEach(l => {
-        if (l.type === "crxsoso" && browsers[l.browser]) {
-          urls.push(l.url);
+    /* ===== Firefox ===== */
+    if (ext.browser === "firefox") {
+      if (browsers.firefox) {
+        if (sources.official && ex.firefox?.official) {
+          const official = links.find(
+            l => l.browser === "firefox" && l.type === "official-page"
+          );
+          if (official) urls.push(official.url);
         }
-      });
+
+        if (sources.crxsoso && ex.firefox?.crxsoso) {
+          const crx = links.find(
+            l => l.browser === "firefox" && l.type === "crxsoso"
+          );
+          if (crx) urls.push(crx.url);
+        }
+      }
     }
   });
 

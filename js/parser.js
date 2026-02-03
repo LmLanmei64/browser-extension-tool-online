@@ -1,8 +1,9 @@
+// js/parser.js
+
 const CHROMIUM_ID_REGEX = /\b[a-p]{32}\b/g;
+const FIREFOX_UUID_REGEX = /\{[0-9a-fA-F\-]{36}\}/g;
 const FIREFOX_SLUG_REGEX =
   /addons\.mozilla\.org\/[^/]+\/addon\/([a-z0-9\-]+)/gi;
-const FIREFOX_UUID_REGEX =
-  /\{[0-9a-fA-F\-]{36}\}/g;
 
 export function parseExtensions(text) {
   const results = [];
@@ -15,21 +16,21 @@ export function parseExtensions(text) {
     }
   };
 
-  // Chromium
-  (text.match(CHROMIUM_ID_REGEX) || []).forEach(id =>
-    push({ browser: "chromium", id }, `c:${id}`)
-  );
+  // Firefox UUID（about:support）
+  (text.match(FIREFOX_UUID_REGEX) || []).forEach(uuid => {
+    push({ browser: "firefox", uuid }, `firefox:${uuid}`);
+  });
 
-  // Firefox slug
+  // Firefox slug（URL）
   let m;
   while ((m = FIREFOX_SLUG_REGEX.exec(text))) {
-    push({ browser: "firefox", slug: m[1] }, `fslug:${m[1]}`);
+    push({ browser: "firefox", slug: m[1] }, `firefox-slug:${m[1]}`);
   }
 
-  // Firefox UUID（about:support）
-  (text.match(FIREFOX_UUID_REGEX) || []).forEach(uuid =>
-    push({ browser: "firefox", uuid }, `fuuid:${uuid}`)
-  );
+  // Chromium ID（无法判断来源，先标记为 chromium）
+  (text.match(CHROMIUM_ID_REGEX) || []).forEach(id => {
+    push({ browser: "chromium", id }, `chromium:${id}`);
+  });
 
   return results;
 }
